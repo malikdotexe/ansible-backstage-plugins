@@ -168,6 +168,10 @@ export function createCatalogModule(options: CreateCatalogModuleOptions) {
                   contentProviders.pahCollectionProviders;
                 ansibleGitContentsProviders =
                   contentProviders.ansibleGitContentsProviders;
+
+                logger.info(
+                  `[catalog-module-${moduleId}]: Created ${ansibleGitContentsProviders.length} Ansible Git Contents provider(s)`,
+                );
               } else if (includesEe(slice)) {
                 eeEntityProvider = undefined;
               }
