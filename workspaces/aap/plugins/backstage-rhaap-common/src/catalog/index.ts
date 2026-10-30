@@ -19,9 +19,8 @@ export type {
 } from './contentProviderContracts';
 export {
   CATALOG_PROVIDERS_AAP,
-  CATALOG_PROVIDERS_INTERIM_CONTENT,
+  CATALOG_PROVIDERS_CONTENT,
   CATALOG_PROVIDERS_RHAAP,
-  CATALOG_PROVIDERS_SELF_SERVICE_EE,
   catalogProvidersConfigRootForSlice,
   getCatalogProvidersConfigRoot,
   getResolvedCatalogProvidersConfig,
