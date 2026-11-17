@@ -70,6 +70,7 @@
     "fix": "backstage-cli repo fix --publish"
   },
   "dependencies": {
+    "@ansible/aap-backend": "workspace:^",
     "@ansible/aap-common": "workspace:^",
     "@ansible/aap-node": "workspace:^",
     "@ansible/content-development-common": "workspace:^",
