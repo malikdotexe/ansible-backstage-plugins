@@ -8,6 +8,7 @@ import {
   CATALOG_PROVIDERS_CONTENT,
   CATALOG_PROVIDERS_RHAAP,
   catalogProvidersConfigRootForSlice,
+  getCatalogProvidersConfigRoot,
   getResolvedCatalogProvidersConfig,
   runWithCatalogProvidersConfigRoot,
 } from './catalogProviderConfig';
@@ -93,6 +94,13 @@ describe('catalogProviderConfig', () => {
       expect(getResolvedCatalogProvidersConfig(config)?.keys()).toEqual([
         'production',
       ]);
+    });
+  });
+
+  it('keeps the provider root across an async callback', async () => {
+    await runWithCatalogProvidersConfigRoot(CATALOG_PROVIDERS_AAP, async () => {
+      await Promise.resolve();
+      expect(getCatalogProvidersConfigRoot()).toBe(CATALOG_PROVIDERS_AAP);
     });
   });
 });

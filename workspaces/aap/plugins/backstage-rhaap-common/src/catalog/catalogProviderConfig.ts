@@ -47,13 +47,6 @@ export function runWithCatalogProvidersConfigRoot<T>(
   return catalogProvidersRootStorage.run(providersRoot, fn);
 }
 
-export async function runWithCatalogProvidersConfigRootAsync<T>(
-  providersRoot: string,
-  fn: () => Promise<T>,
-): Promise<T> {
-  return catalogProvidersRootStorage.run(providersRoot, fn);
-}
-
 export function getCatalogProvidersConfigRoot(): string {
   return catalogProvidersRootStorage.getStore() ?? CATALOG_PROVIDERS_RHAAP;
 }

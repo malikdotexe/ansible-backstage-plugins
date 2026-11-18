@@ -25,7 +25,6 @@ export {
   getCatalogProvidersConfigRoot,
   getResolvedCatalogProvidersConfig,
   runWithCatalogProvidersConfigRoot,
-  runWithCatalogProvidersConfigRootAsync,
 } from './catalogProviderConfig';
 export { readAapApiEntityConfigs } from './providers/config';
 export type { AapConfig, PAHRepositoryConfig } from './providers/types';

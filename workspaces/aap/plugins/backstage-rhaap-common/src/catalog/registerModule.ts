@@ -34,7 +34,7 @@ import type {
 } from './contentProviderContracts';
 import {
   catalogProvidersConfigRootForSlice,
-  runWithCatalogProvidersConfigRootAsync,
+  runWithCatalogProvidersConfigRoot,
 } from './catalogProviderConfig';
 import {
   assertCatalogModuleSliceAllowed,
@@ -127,7 +127,7 @@ export function createCatalogModule(options: CreateCatalogModuleOptions) {
             }),
           );
 
-          await runWithCatalogProvidersConfigRootAsync(
+          await runWithCatalogProvidersConfigRoot(
             catalogProvidersConfigRootForSlice(slice),
             async () => {
               const aapEntityProvider = includesAap(slice)
