@@ -22,7 +22,7 @@ export interface Config {
               labels?: Array<string>;
               excludeLabels?: Array<string>;
               surveyEnabled?: boolean;
-              schedule?: SchedulerServiceTaskScheduleDefinitionConfig;
+              schedule: SchedulerServiceTaskScheduleDefinitionConfig;
             };
           };
         };

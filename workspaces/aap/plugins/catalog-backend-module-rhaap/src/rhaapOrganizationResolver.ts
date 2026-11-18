@@ -10,7 +10,11 @@ import {
   AAPClient,
   resolveActiveOrganizations,
 } from '@ansible/backstage-rhaap-common';
-import { getResolvedAapProvidersConfig } from '@ansible/backstage-rhaap-common/catalog';
+import {
+  CATALOG_PROVIDERS_AAP,
+  CATALOG_PROVIDERS_RHAAP,
+  getResolvedAapProvidersConfig,
+} from '@ansible/backstage-rhaap-common/catalog';
 import {
   portalActiveOrganizationServiceRef,
   type ActiveOrganizationResolver,
@@ -24,12 +28,29 @@ type MembershipClient = Pick<
   | 'getTeamsByUserId'
 >;
 
+/**
+ * Membership scope follows the catalog root that actually publishes entities.
+ * The legacy all module publishes `rhaap` whenever that root is set.
+ * AAP-only deployments have no `rhaap` root, so they use `aap`.
+ */
+function organizationProviderConfig(config: Config): Config | undefined {
+  getResolvedAapProvidersConfig(config);
+  const rhaap = config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
+  const aap = config.getOptionalConfig(CATALOG_PROVIDERS_AAP);
+  if (rhaap && aap) {
+    return rhaap;
+  }
+  return getResolvedAapProvidersConfig(config);
+}
+
 /** AAP-specific identity/membership adapter. Catalog namespace is never tenancy. */
 export class RhaapOrganizationResolver implements ActiveOrganizationResolver {
   constructor(
     private readonly config: Config,
     private readonly client?: MembershipClient,
-  ) {}
+  ) {
+    organizationProviderConfig(config);
+  }
 
   async resolve(
     credentials: BackstageCredentials,
@@ -56,7 +77,7 @@ export class RhaapOrganizationResolver implements ActiveOrganizationResolver {
         return [];
       const match = /^user:default\/([^/]+)$/i.exec(principal.userEntityRef);
       if (!match) return [];
-      const providers = getResolvedAapProvidersConfig(this.config);
+      const providers = organizationProviderConfig(this.config);
       if (!providers || providers.keys().length === 0) return [];
       const configured = new Set<string>();
       let multiOrgEnabled = false;

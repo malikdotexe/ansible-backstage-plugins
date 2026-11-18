@@ -16,6 +16,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import type { Config } from '@backstage/config';
+import { InputError } from '@backstage/errors';
 
 import type { CatalogModuleSlice } from './sliceGuard';
 
@@ -51,10 +52,39 @@ export function getCatalogProvidersConfigRoot(): string {
   return catalogProvidersRootStorage.getStore() ?? CATALOG_PROVIDERS_RHAAP;
 }
 
+function multiOrgEnabledFor(provider: Config): boolean {
+  return provider.getOptionalBoolean('multiOrgEnabled') ?? false;
+}
+
+/**
+ * Catalog sync, sign-in, and provisioning must build the same user ref.
+ * Reject a shared environment whose roots disagree on multiOrgEnabled.
+ */
+export function assertNoConflictingAapIdentityMode(config: Config): void {
+  const aap = config.getOptionalConfig(CATALOG_PROVIDERS_AAP);
+  const rhaap = config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
+  if (!aap || !rhaap) {
+    return;
+  }
+  for (const key of aap.keys()) {
+    if (!rhaap.has(key)) {
+      continue;
+    }
+    const aapMode = multiOrgEnabledFor(aap.getConfig(key));
+    const rhaapMode = multiOrgEnabledFor(rhaap.getConfig(key));
+    if (aapMode !== rhaapMode) {
+      throw new InputError(
+        `catalog.providers.aap.${key}.multiOrgEnabled (${aapMode}) disagrees with catalog.providers.rhaap.${key}.multiOrgEnabled (${rhaapMode}). Catalog sync, sign-in, and provisioning must use the same identity mode.`,
+      );
+    }
+  }
+}
+
 export function resolveCatalogProvidersConfig(
   config: Config,
   primaryRoot: string,
 ): Config | undefined {
+  assertNoConflictingAapIdentityMode(config);
   const primaryConfig = config.getOptionalConfig(primaryRoot);
   if (primaryConfig) {
     return primaryConfig;

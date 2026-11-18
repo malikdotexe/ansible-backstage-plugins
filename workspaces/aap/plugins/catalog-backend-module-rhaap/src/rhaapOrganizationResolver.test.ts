@@ -50,6 +50,51 @@ describe('Trusted AAP organization resolution', () => {
     ]);
   });
 
+  it('uses the rhaap organization list when both roots are configured', async () => {
+    const both = new RhaapOrganizationResolver(
+      new ConfigReader({
+        catalog: {
+          providers: {
+            aap: {
+              dev: { orgs: ['Platform'], multiOrgEnabled: true },
+            },
+            rhaap: {
+              dev: { orgs: ['Engineering', 'Finance'], multiOrgEnabled: true },
+            },
+          },
+        },
+      }),
+      client,
+    );
+    await expect(both.resolveAll(credentials())).resolves.toEqual([
+      'engineering',
+      'finance',
+    ]);
+    expect(client.getOrgsByUserId).toHaveBeenCalledWith(42, [
+      'engineering',
+      'finance',
+    ]);
+  });
+
+  it('rejects dual roots that disagree on multiOrgEnabled', () => {
+    expect(
+      () =>
+        new RhaapOrganizationResolver(
+          new ConfigReader({
+            catalog: {
+              providers: {
+                aap: { dev: { orgs: ['Platform'], multiOrgEnabled: true } },
+                rhaap: {
+                  dev: { orgs: ['Engineering'], multiOrgEnabled: false },
+                },
+              },
+            },
+          }),
+          client,
+        ),
+    ).toThrow('catalog.providers.aap.dev.multiOrgEnabled');
+  });
+
   it('resolves memberships from catalog.providers.aap without a legacy rhaap copy', async () => {
     const split = new RhaapOrganizationResolver(
       new ConfigReader({

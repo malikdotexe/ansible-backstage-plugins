@@ -3,6 +3,7 @@
 // console.log is used intentionally for provider-configuration diagnostics.
 import { readSchedulerServiceTaskScheduleDefinitionFromConfig } from '@backstage/backend-plugin-api';
 import type { Config } from '@backstage/config';
+import { InputError } from '@backstage/errors';
 import { resolveActiveOrganizations } from '@ansible/backstage-rhaap-common';
 import type { AapConfig, PAHRepositoryConfig } from './types';
 import { getResolvedCatalogProvidersConfig } from '../catalogProviderConfig';
@@ -19,11 +20,29 @@ export function readAapApiEntityConfigs(
     .keys()
     .map(id => {
       const catalogConfig = providerConfigs.getConfig(id);
+      const syncPath = `sync.${syncEntity}`;
       if (
-        catalogConfig.has(`sync.${syncEntity}.enabled`) &&
-        !catalogConfig.getBoolean(`sync.${syncEntity}.enabled`)
+        catalogConfig.has(`${syncPath}.enabled`) &&
+        !catalogConfig.getBoolean(`${syncPath}.enabled`)
       )
         return null;
+      // PAH connection settings are only required when repositories are configured.
+      // Repository-level schedules stay valid without a top-level schedule.
+      if (syncEntity === 'pahCollections') {
+        const repositories = catalogConfig.getOptionalConfigArray(
+          `${syncPath}.repositories`,
+        );
+        if (!repositories?.length) return null;
+        return readAapApiEntityConfig(id, config, catalogConfig, syncEntity);
+      }
+      // Identity-only environments have no sync block. Skip the provider
+      // instead of failing startup on a missing schedule.
+      if (!catalogConfig.has(syncPath)) return null;
+      if (!catalogConfig.has(`${syncPath}.schedule`)) {
+        throw new InputError(
+          `No schedule provided via config for ${syncPath}.schedule on catalog provider "${id}".`,
+        );
+      }
       return readAapApiEntityConfig(id, config, catalogConfig, syncEntity);
     })
     .filter(c => !!c);

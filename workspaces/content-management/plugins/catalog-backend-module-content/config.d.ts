@@ -25,7 +25,40 @@ export interface Config {
             ansibleGitContents?: {
               enabled?: boolean;
               schedule?: SchedulerServiceTaskScheduleDefinitionConfig;
-              providers?: Record<string, unknown>;
+              providers?: {
+                github?: Array<{
+                  /** @visibility frontend */
+                  name: string;
+                  /** @visibility frontend */
+                  host?: string;
+                  checkSSL?: boolean;
+                  orgs: Array<{
+                    /** @visibility frontend */
+                    name: string;
+                    branches?: Array<string>;
+                    tags?: Array<string>;
+                    galaxyFilePaths?: Array<string>;
+                    crawlDepth?: number;
+                    schedule?: SchedulerServiceTaskScheduleDefinitionConfig;
+                  }>;
+                }>;
+                gitlab?: Array<{
+                  /** @visibility frontend */
+                  name: string;
+                  /** @visibility frontend */
+                  host?: string;
+                  checkSSL?: boolean;
+                  orgs: Array<{
+                    /** @visibility frontend */
+                    name: string;
+                    branches?: Array<string>;
+                    tags?: Array<string>;
+                    galaxyFilePaths?: Array<string>;
+                    crawlDepth?: number;
+                    schedule?: SchedulerServiceTaskScheduleDefinitionConfig;
+                  }>;
+                }>;
+              };
             };
           };
         };

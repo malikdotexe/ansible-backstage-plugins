@@ -319,15 +319,16 @@ describe('UserProvisionerProvider', () => {
           },
         },
       });
-      mockAnsibleService.getUserInfoById.mockResolvedValue(MOCK_SUPERUSER);
-      mockAnsibleService.listSystemUsers.mockResolvedValue([MOCK_SUPERUSER]);
+      mockAnsibleService.getUserInfoById.mockResolvedValue(MOCK_USER);
+      mockAnsibleService.getOrgsByUserId.mockResolvedValue(MOCK_ORGS);
+      mockAnsibleService.getTeamsByUserId.mockResolvedValue([]);
       const idProvisioner = new UserProvisionerProvider({
         ansibleService: mockAnsibleService,
         config,
         logger: mockServices.logger.mock(),
       });
       await idProvisioner.connect(mockConnection);
-      await idProvisioner.createUser('admin', 1);
+      await idProvisioner.createUser('jdoe', 42);
       const entities =
         mockConnection.applyMutation.mock.calls[0][0].type === 'delta'
           ? (
@@ -336,9 +337,9 @@ describe('UserProvisionerProvider', () => {
               }
             ).added.map(item => item.entity)
           : [];
-      expect(entities.find(item => item.kind === 'User').metadata.name).toBe(
-        'aap-user-1',
-      );
+      const user = entities.find(item => item.kind === 'User');
+      expect(user.metadata.name).toBe('aap-user-42');
+      expect(user.spec.memberOf).toContain('group:aap-1/aap-org-1');
     });
 
     it('keeps single-org flag-on user and admin identities aligned with auth', async () => {

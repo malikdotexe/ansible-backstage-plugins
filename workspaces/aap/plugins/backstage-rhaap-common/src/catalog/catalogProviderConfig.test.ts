@@ -41,7 +41,17 @@ describe('catalogProviderConfig', () => {
       catalog: {
         providers: {
           rhaap: {
-            production: { orgs: 'LegacyOrg' },
+            production: {
+              orgs: 'LegacyOrg',
+              sync: {
+                orgsUsersTeams: {
+                  schedule: {
+                    frequency: { minutes: 30 },
+                    timeout: { minutes: 3 },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -66,10 +76,20 @@ describe('catalogProviderConfig', () => {
       catalog: {
         providers: {
           aap: {
-            production: { orgs: 'SplitOrg' },
+            production: {
+              orgs: 'SplitOrg',
+              sync: {
+                orgsUsersTeams: {
+                  schedule: {
+                    frequency: { minutes: 30 },
+                    timeout: { minutes: 3 },
+                  },
+                },
+              },
+            },
           },
           rhaap: {
-            production: { orgs: 'LegacyOrg' },
+            production: { orgs: 'LegacyOrg', multiOrgEnabled: false },
           },
         },
       },
@@ -121,6 +141,24 @@ describe('catalogProviderConfig', () => {
       'development',
     ]);
     expect(isAapMultiOrgEnabled(config)).toBe(true);
+  });
+
+  it('rejects roots that disagree on multiOrgEnabled for the same environment', () => {
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          aap: { development: { multiOrgEnabled: true } },
+          rhaap: { development: { multiOrgEnabled: false } },
+        },
+      },
+    });
+
+    expect(() => getResolvedAapProvidersConfig(config)).toThrow(
+      'catalog.providers.aap.development.multiOrgEnabled',
+    );
+    expect(() => getResolvedCatalogProvidersConfig(config)).toThrow(
+      'catalog.providers.rhaap.development.multiOrgEnabled',
+    );
   });
 
   it('falls back to legacy rhaap for AAP identity when aap is unset', () => {
