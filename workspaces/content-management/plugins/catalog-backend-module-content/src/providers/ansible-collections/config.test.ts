@@ -2,6 +2,7 @@
  * @jest-environment node
  */
 import { ConfigReader } from '@backstage/config';
+import { runWithCatalogProvidersConfigRoot } from '@ansible/backstage-rhaap-common/catalog';
 import { readAnsibleGitContentsConfigs, getDefaultHost } from '../config';
 
 describe('config', () => {
@@ -16,6 +17,52 @@ describe('config', () => {
   });
 
   describe('readAnsibleGitContentsConfigs', () => {
+    it('reads content sources when AAP identity modes disagree', () => {
+      const schedule = {
+        frequency: { minutes: 30 },
+        timeout: { minutes: 3 },
+      };
+      const config = new ConfigReader({
+        catalog: {
+          providers: {
+            aap: {
+              dev: {
+                multiOrgEnabled: true,
+                sync: { orgsUsersTeams: { schedule } },
+              },
+            },
+            rhaap: {
+              dev: {
+                multiOrgEnabled: false,
+                sync: { orgsUsersTeams: { schedule } },
+              },
+            },
+            content: {
+              dev: {
+                sync: {
+                  ansibleGitContents: {
+                    schedule: {
+                      frequency: { minutes: 30 },
+                      timeout: { minutes: 3 },
+                    },
+                    providers: {
+                      github: [{ name: 'internal', orgs: [{ name: 'acme' }] }],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const sources = runWithCatalogProvidersConfigRoot(
+        'catalog.providers.content',
+        () => readAnsibleGitContentsConfigs(config),
+      );
+      expect(sources.map(source => source.organization)).toEqual(['acme']);
+    });
+
     it('should return empty array when no rhaap config exists', () => {
       const config = new ConfigReader({});
       const result = readAnsibleGitContentsConfigs(config);

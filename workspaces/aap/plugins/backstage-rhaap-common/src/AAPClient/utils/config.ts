@@ -1,12 +1,23 @@
 import { Config } from '@backstage/config';
 import { ScmIntegrations } from '@backstage/integration';
 
-import { getResolvedAapProvidersConfig } from '../../catalog/catalogProviderConfig';
+import { getProviderScopedCatalogConfig } from '../../catalog/catalogProviderConfig';
 import { AnsibleConfig, CatalogConfig } from '../../types';
 
 export function getAnsibleConfig(config: Config): AnsibleConfig {
-  const ansibleConfig = config.getConfig('ansible');
   const integrations = ScmIntegrations.fromConfig(config);
+  const ansibleConfig = config.getOptionalConfig('ansible');
+  if (!ansibleConfig) {
+    return {
+      rhaap: {
+        checkSSL: true,
+        showCaseLocation: { type: 'file' },
+      },
+      githubIntegration: integrations.github.list()[0]?.config,
+      gitlabIntegration: integrations.gitlab.list()[0]?.config,
+      feedback: { enabled: false },
+    };
+  }
   const githubIntegration = integrations.github.list()[0]?.config;
   const gitlabIntegration = integrations.gitlab.list()[0]?.config;
   const ansibleConfigVales: AnsibleConfig = {
@@ -57,7 +68,7 @@ export function getAnsibleConfig(config: Config): AnsibleConfig {
 }
 
 export function getCatalogConfig(rootConfig: Config): CatalogConfig {
-  const catalogRhaapConfig = getResolvedAapProvidersConfig(rootConfig);
+  const catalogRhaapConfig = getProviderScopedCatalogConfig(rootConfig);
   const catalogConfig: CatalogConfig = {
     organizations: [],
     surveyEnabled: undefined,

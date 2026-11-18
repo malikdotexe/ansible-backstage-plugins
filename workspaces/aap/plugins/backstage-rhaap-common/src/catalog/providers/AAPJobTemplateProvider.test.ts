@@ -454,6 +454,7 @@ describe('AAPJobTemplateProvider', () => {
         true, // surveyEnabled
         ['test-label', 'production'], // jobTemplateLabels
         [], // jobTemplateExcludeLabels
+        ['default'],
       );
 
       expect(entityProviderConnection.applyMutation).toHaveBeenCalledWith({
@@ -917,6 +918,7 @@ describe('AAPJobTemplateProvider', () => {
         false, // surveyEnabled = false
         [], // empty jobTemplateLabels
         [], // jobTemplateExcludeLabels
+        ['default'],
       );
     });
 
@@ -1040,6 +1042,7 @@ describe('AAPJobTemplateProvider', () => {
         true, // surveyEnabled
         ['test-label', 'production'], // jobTemplateLabels
         [], // jobTemplateExcludeLabels
+        ['default'],
       );
 
       expect(entityProviderConnection.applyMutation).toHaveBeenCalledWith({
@@ -1119,6 +1122,7 @@ describe('AAPJobTemplateProvider', () => {
         true, // surveyEnabled
         ['test-label', 'production'], // jobTemplateLabels
         ['deprecated', 'experimental'], // jobTemplateExcludeLabels
+        ['default'],
       );
     });
 
@@ -1175,6 +1179,7 @@ describe('AAPJobTemplateProvider', () => {
         true, // surveyEnabled
         ['test-label', 'production'], // jobTemplateLabels
         [], // empty jobTemplateExcludeLabels
+        ['default'],
       );
     });
 
@@ -1237,6 +1242,7 @@ describe('AAPJobTemplateProvider', () => {
         true, // surveyEnabled
         ['test-label', 'production'], // jobTemplateLabels
         [], // default empty jobTemplateExcludeLabels
+        ['default'],
       );
     });
   });

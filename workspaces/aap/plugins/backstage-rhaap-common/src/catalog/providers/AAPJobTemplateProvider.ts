@@ -168,6 +168,7 @@ export class AAPJobTemplateProvider implements EntityProvider {
           this.surveyEnabled,
           this.jobTemplateLabels,
           this.jobTemplateExcludeLabels,
+          this.orgs,
         );
         this.logger.info(
           `[${AAPJobTemplateProvider.pluginLogName}]: Fetched ${aapJobTemplates.length} job templates.`,

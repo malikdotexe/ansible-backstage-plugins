@@ -13,7 +13,9 @@ type ScheduleDefinition = ReturnType<
 export function readAnsibleGitContentsConfigs(
   config: Config,
 ): AnsibleGitContentsSourceConfig[] {
-  const providerConfigs = getResolvedCatalogProvidersConfig(config);
+  const providerConfigs = getResolvedCatalogProvidersConfig(config, {
+    validateIdentity: false,
+  });
 
   if (!providerConfigs) {
     console.log('No catalog provider config found for content module');

@@ -53,22 +53,59 @@ export function getCatalogProvidersConfigRoot(): string {
 }
 
 function envPublishesAapIdentity(env: Config): boolean {
-  return (
-    env.has('multiOrgEnabled') ||
-    env.has('orgs') ||
-    env.has('sync.orgsUsersTeams')
+  if (!env.has('sync.orgsUsersTeams')) {
+    return false;
+  }
+  return !(
+    env.has('sync.orgsUsersTeams.enabled') &&
+    env.getBoolean('sync.orgsUsersTeams.enabled') === false
   );
 }
 
-function identityEnvs(root: Config): Config[] {
+function identityEnvEntries(root: Config): Array<{ key: string; env: Config }> {
   return root
     .keys()
     .filter(key => envPublishesAapIdentity(root.getConfig(key)))
-    .map(key => root.getConfig(key));
+    .map(key => ({ key, env: root.getConfig(key) }));
 }
 
-function effectiveMultiOrg(envs: Config[]): boolean {
-  return envs.some(env => env.getOptionalBoolean('multiOrgEnabled') === true);
+function configuredOrgNames(env: Config): string[] {
+  const raw = env.getOptional('orgs');
+  const values =
+    typeof raw === 'string' ? raw.split(',') : Array.isArray(raw) ? raw : [];
+  const names = values
+    .filter((name): name is string => typeof name === 'string')
+    .map(name => name.trim().toLowerCase())
+    .filter(name => name.length > 0);
+  const resolved = names.length > 0 ? names : ['default'];
+  return env.getOptionalBoolean('multiOrgEnabled') === true
+    ? resolved
+    : [resolved[0]];
+}
+
+function organizationListKey(envs: Config[]): string {
+  const names = new Set<string>();
+  for (const env of envs) {
+    for (const name of configuredOrgNames(env)) {
+      names.add(name);
+    }
+  }
+  return [...names].sort((left, right) => left.localeCompare(right)).join(',');
+}
+
+function signInMultiOrgEnabled(config: Config): boolean {
+  const providers =
+    config.getOptionalConfig(CATALOG_PROVIDERS_AAP) ??
+    config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
+  return (
+    providers
+      ?.keys()
+      .some(
+        key =>
+          providers.getConfig(key).getOptionalBoolean('multiOrgEnabled') ===
+          true,
+      ) ?? false
+  );
 }
 
 /**
@@ -80,7 +117,7 @@ export function legacyRootPublishesAapIdentity(config: Config): boolean {
   if (!rhaap) {
     return false;
   }
-  return identityEnvs(rhaap).length > 0;
+  return identityEnvEntries(rhaap).length > 0;
 }
 
 /**
@@ -94,16 +131,32 @@ export function assertNoConflictingAapIdentityMode(config: Config): void {
   if (!aap || !rhaap) {
     return;
   }
-  const aapEnvs = identityEnvs(aap);
-  const rhaapEnvs = identityEnvs(rhaap);
+  const aapEnvs = identityEnvEntries(aap);
+  const rhaapEnvs = identityEnvEntries(rhaap);
+  const signInMode = signInMultiOrgEnabled(config);
+  for (const [rootName, entries] of [
+    ['aap', aapEnvs],
+    ['rhaap', rhaapEnvs],
+  ] as const) {
+    for (const { key, env } of entries) {
+      const envMode = env.getOptionalBoolean('multiOrgEnabled') === true;
+      if (envMode !== signInMode) {
+        throw new InputError(
+          `catalog.providers.${rootName}.${key}.multiOrgEnabled (${envMode}) disagrees with the sign-in identity mode (${signInMode}). Catalog sync, sign-in, provisioning, and membership must use the same identity mode.`,
+        );
+      }
+    }
+  }
   if (aapEnvs.length === 0 || rhaapEnvs.length === 0) {
     return;
   }
-  const aapMode = effectiveMultiOrg(aapEnvs);
-  const rhaapMode = effectiveMultiOrg(rhaapEnvs);
-  if (aapMode !== rhaapMode) {
+  const aapOrganizations = organizationListKey(aapEnvs.map(entry => entry.env));
+  const rhaapOrganizations = organizationListKey(
+    rhaapEnvs.map(entry => entry.env),
+  );
+  if (aapOrganizations !== rhaapOrganizations) {
     throw new InputError(
-      `catalog.providers.aap multiOrgEnabled (${aapMode}) disagrees with catalog.providers.rhaap multiOrgEnabled (${rhaapMode}). Catalog sync, sign-in, provisioning, and membership must use the same identity mode.`,
+      `catalog.providers.aap organizations (${aapOrganizations}) disagree with catalog.providers.rhaap organizations (${rhaapOrganizations}). Provisioning and membership must use the same organization list.`,
     );
   }
 }
@@ -111,8 +164,11 @@ export function assertNoConflictingAapIdentityMode(config: Config): void {
 export function resolveCatalogProvidersConfig(
   config: Config,
   primaryRoot: string,
+  options?: { validateIdentity?: boolean },
 ): Config | undefined {
-  assertNoConflictingAapIdentityMode(config);
+  if (options?.validateIdentity !== false) {
+    assertNoConflictingAapIdentityMode(config);
+  }
   const primaryConfig = config.getOptionalConfig(primaryRoot);
   if (primaryConfig) {
     return primaryConfig;
@@ -129,8 +185,27 @@ export function resolveCatalogProvidersConfig(
  */
 export function getResolvedCatalogProvidersConfig(
   config: Config,
+  options?: { validateIdentity?: boolean },
 ): Config | undefined {
-  return resolveCatalogProvidersConfig(config, getCatalogProvidersConfigRoot());
+  return resolveCatalogProvidersConfig(
+    config,
+    getCatalogProvidersConfigRoot(),
+    options,
+  );
+}
+
+/**
+ * Organization scope for a provider running inside a catalog slice.
+ * Outside a slice, identity clients keep the AAP-then-legacy root.
+ */
+export function getProviderScopedCatalogConfig(
+  config: Config,
+): Config | undefined {
+  const storedRoot = catalogProvidersRootStorage.getStore();
+  if (storedRoot) {
+    return resolveCatalogProvidersConfig(config, storedRoot);
+  }
+  return getResolvedAapProvidersConfig(config);
 }
 
 /**

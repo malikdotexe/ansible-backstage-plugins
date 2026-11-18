@@ -67,6 +67,10 @@ export interface Config {
       rhaap?: Record<string, unknown>;
     };
   };
+  /**
+   * Optional for Git-only content. `baseUrl` and `token` are required at
+   * runtime when an enabled PAH repository is configured.
+   */
   ansible?: {
     rhaap?: {
       baseUrl?: string;

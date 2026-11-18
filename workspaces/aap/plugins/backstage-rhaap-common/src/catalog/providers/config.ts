@@ -62,7 +62,7 @@ function readAapApiEntityConfig(
 ): AapConfig {
   const baseUrl = config.getString('ansible.rhaap.baseUrl');
   const token = config.getString('ansible.rhaap.token');
-  const checkSSL = config.getBoolean('ansible.rhaap.checkSSL') ?? true;
+  const checkSSL = config.getOptionalBoolean('ansible.rhaap.checkSSL') ?? true;
   const schedule = catalogConfig.has(`sync.${syncEntity}.schedule`)
     ? readSchedulerServiceTaskScheduleDefinitionFromConfig(
         catalogConfig.getConfig(`sync.${syncEntity}.schedule`),

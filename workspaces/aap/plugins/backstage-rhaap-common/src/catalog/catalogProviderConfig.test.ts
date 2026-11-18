@@ -145,21 +145,99 @@ describe('catalogProviderConfig', () => {
   });
 
   it('rejects roots that disagree on multiOrgEnabled for the same environment', () => {
+    const identitySync = {
+      sync: {
+        orgsUsersTeams: {
+          schedule: { frequency: { minutes: 30 }, timeout: { minutes: 3 } },
+        },
+      },
+    };
     const config = new ConfigReader({
       catalog: {
         providers: {
-          aap: { development: { multiOrgEnabled: true } },
-          rhaap: { development: { multiOrgEnabled: false } },
+          aap: { development: { multiOrgEnabled: true, ...identitySync } },
+          rhaap: { development: { multiOrgEnabled: false, ...identitySync } },
         },
       },
     });
 
     expect(() => getResolvedAapProvidersConfig(config)).toThrow(
-      'catalog.providers.aap multiOrgEnabled (true)',
+      'catalog.providers.rhaap.development.multiOrgEnabled (false)',
     );
     expect(() => getResolvedCatalogProvidersConfig(config)).toThrow(
-      'catalog.providers.rhaap multiOrgEnabled (false)',
+      'sign-in identity mode (true)',
     );
+  });
+
+  it('rejects mixed identity modes inside one provider root', () => {
+    const identitySync = {
+      sync: {
+        orgsUsersTeams: {
+          schedule: { frequency: { minutes: 30 }, timeout: { minutes: 3 } },
+        },
+      },
+    };
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          aap: {
+            development: { multiOrgEnabled: true, ...identitySync },
+            production: { multiOrgEnabled: false, ...identitySync },
+          },
+          rhaap: {
+            production: {
+              sync: { ansibleGitContents: { enabled: true } },
+            },
+          },
+        },
+      },
+    });
+
+    expect(() => getResolvedAapProvidersConfig(config)).toThrow(
+      'catalog.providers.aap.production.multiOrgEnabled (false)',
+    );
+  });
+
+  it('ignores disabled identity sync and job-template organization settings', () => {
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          aap: {
+            development: {
+              multiOrgEnabled: true,
+              orgs: ['Platform'],
+              sync: {
+                orgsUsersTeams: {
+                  enabled: false,
+                  schedule: {
+                    frequency: { minutes: 30 },
+                    timeout: { minutes: 3 },
+                  },
+                },
+              },
+            },
+          },
+          rhaap: {
+            development: {
+              multiOrgEnabled: false,
+              orgs: ['Engineering'],
+              sync: {
+                jobTemplates: {
+                  enabled: true,
+                  schedule: {
+                    frequency: { minutes: 30 },
+                    timeout: { minutes: 3 },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    expect(legacyRootPublishesAapIdentity(config)).toBe(false);
+    expect(() => getResolvedAapProvidersConfig(config)).not.toThrow();
   });
 
   it('rejects identity modes that differ across environment keys', () => {

@@ -1,6 +1,15 @@
 import { ConfigReader } from '@backstage/config';
 
-import { findMissingConfiguredOrganizations, getCatalogConfig } from './config';
+import {
+  CATALOG_PROVIDERS_AAP,
+  CATALOG_PROVIDERS_RHAAP,
+  runWithCatalogProvidersConfigRoot,
+} from '../../catalog/catalogProviderConfig';
+import {
+  findMissingConfiguredOrganizations,
+  getAnsibleConfig,
+  getCatalogConfig,
+} from './config';
 
 describe('findMissingConfiguredOrganizations', () => {
   it('returns empty when all configured orgs exist in AAP', () => {
@@ -54,5 +63,35 @@ describe('getCatalogConfig', () => {
       'engineering',
       'finance',
     ]);
+  });
+
+  it('uses the active provider organization list instead of the other root', () => {
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          aap: { dev: { orgs: ['Platform'] } },
+          rhaap: { dev: { orgs: ['Engineering'] } },
+        },
+      },
+    });
+
+    expect(
+      runWithCatalogProvidersConfigRoot(
+        CATALOG_PROVIDERS_RHAAP,
+        () => getCatalogConfig(config).organizations,
+      ),
+    ).toEqual(['engineering']);
+    expect(
+      runWithCatalogProvidersConfigRoot(
+        CATALOG_PROVIDERS_AAP,
+        () => getCatalogConfig(config).organizations,
+      ),
+    ).toEqual(['platform']);
+  });
+});
+
+describe('getAnsibleConfig', () => {
+  it('starts when the ansible block is omitted', () => {
+    expect(getAnsibleConfig(new ConfigReader({})).rhaap?.checkSSL).toBe(true);
   });
 });

@@ -10,12 +10,7 @@ import {
   AAPClient,
   resolveActiveOrganizations,
 } from '@ansible/backstage-rhaap-common';
-import {
-  CATALOG_PROVIDERS_AAP,
-  CATALOG_PROVIDERS_RHAAP,
-  getResolvedAapProvidersConfig,
-  legacyRootPublishesAapIdentity,
-} from '@ansible/backstage-rhaap-common/catalog';
+import { getResolvedAapProvidersConfig } from '@ansible/backstage-rhaap-common/catalog';
 import {
   portalActiveOrganizationServiceRef,
   type ActiveOrganizationResolver,
@@ -30,18 +25,10 @@ type MembershipClient = Pick<
 >;
 
 /**
- * Membership uses the same identity mode as sign-in.
- * When legacy `rhaap` publishes users, read that root so membership matches
- * the all module. Content-only `rhaap` is ignored and membership follows `aap`.
+ * Membership uses the same provider root as provisioning: `aap`, then legacy
+ * `rhaap`. Differing identity modes or organization lists fail in that lookup.
  */
 function organizationProviderConfig(config: Config): Config | undefined {
-  getResolvedAapProvidersConfig(config);
-  if (
-    legacyRootPublishesAapIdentity(config) &&
-    config.getOptionalConfig(CATALOG_PROVIDERS_AAP)
-  ) {
-    return config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
-  }
   return getResolvedAapProvidersConfig(config);
 }
 
@@ -85,17 +72,23 @@ export class RhaapOrganizationResolver implements ActiveOrganizationResolver {
       let multiOrgEnabled = false;
       for (const key of providers.keys()) {
         const provider = providers.getConfig(key);
-        const raw = provider.getOptional('orgs');
-        const names = typeof raw === 'string' ? raw.split(',') : raw;
-        if (
-          !Array.isArray(names) ||
-          !names.length ||
-          names.some(name => typeof name !== 'string' || !name.trim())
-        )
-          return [];
-        resolveActiveOrganizations(provider).forEach(name =>
-          configured.add(name),
-        );
+        if (!provider.has('orgs')) {
+          resolveActiveOrganizations(provider).forEach(name =>
+            configured.add(name),
+          );
+        } else {
+          const raw = provider.getOptional('orgs');
+          const names = typeof raw === 'string' ? raw.split(',') : raw;
+          if (
+            !Array.isArray(names) ||
+            !names.length ||
+            names.some(name => typeof name !== 'string' || !name.trim())
+          )
+            return [];
+          resolveActiveOrganizations(provider).forEach(name =>
+            configured.add(name),
+          );
+        }
         multiOrgEnabled ||=
           provider.getOptionalBoolean('multiOrgEnabled') === true;
       }

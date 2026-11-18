@@ -221,7 +221,13 @@ describe('readAapApiEntityConfigs', () => {
         ...baseConfig,
         catalog: {
           providers: {
-            aap: { dev: { orgs: ['Default'], multiOrgEnabled: true } },
+            aap: { dev: { orgs: ['Platform'] } },
+            rhaap: {
+              dev: {
+                orgs: ['Engineering'],
+                ...orgSync,
+              },
+            },
           },
         },
       });
@@ -231,6 +237,9 @@ describe('readAapApiEntityConfigs', () => {
         () => readAapApiEntityConfigs(config, 'orgsUsersTeams'),
       );
       expect(configs).toEqual([]);
+      expect(configs.map(item => item.organizations)).not.toEqual([
+        ['engineering'],
+      ]);
       expect(
         runWithCatalogProvidersConfigRoot(CATALOG_PROVIDERS_AAP, () =>
           readAapApiEntityConfigs(config, 'jobTemplates'),
@@ -277,6 +286,64 @@ describe('readAapApiEntityConfigs', () => {
           readAapApiEntityConfigs(config, 'pahCollections'),
         ),
       ).toEqual([]);
+    });
+
+    it('reads the content PAH repository instead of the legacy repository', () => {
+      const schedule = {
+        frequency: { minutes: 30 },
+        timeout: { minutes: 3 },
+      };
+      const config = new ConfigReader({
+        ...baseConfig,
+        catalog: {
+          providers: {
+            content: {
+              dev: {
+                sync: {
+                  pahCollections: {
+                    enabled: true,
+                    repositories: [{ name: 'platform-pah', schedule }],
+                  },
+                },
+              },
+            },
+            rhaap: {
+              dev: {
+                sync: {
+                  pahCollections: {
+                    enabled: true,
+                    repositories: [{ name: 'legacy-pah', schedule }],
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const configs = runWithCatalogProvidersConfigRoot(
+        CATALOG_PROVIDERS_CONTENT,
+        () => readAapApiEntityConfigs(config, 'pahCollections'),
+      );
+      expect(
+        configs[0].pahRepositories.map(repository => repository.name),
+      ).toEqual(['platform-pah']);
+    });
+
+    it('defaults checkSSL to true when the setting is omitted', () => {
+      const { checkSSL: _ignored, ...rhaap } = baseConfig.ansible.rhaap;
+      const config = new ConfigReader({
+        ansible: { rhaap },
+        catalog: {
+          providers: {
+            rhaap: { production: { ...orgSync } },
+          },
+        },
+      });
+
+      expect(
+        readAapApiEntityConfigs(config, 'orgsUsersTeams')[0].checkSSL,
+      ).toBe(true);
     });
   });
 });

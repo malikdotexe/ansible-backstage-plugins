@@ -50,16 +50,67 @@ describe('Trusted AAP organization resolution', () => {
     ]);
   });
 
-  it('uses the rhaap organization list when both roots are configured', async () => {
+  it('rejects differing organization lists when both roots publish identity', () => {
+    const identitySync = {
+      sync: {
+        orgsUsersTeams: {
+          schedule: { frequency: { minutes: 30 }, timeout: { minutes: 3 } },
+        },
+      },
+    };
+    expect(
+      () =>
+        new RhaapOrganizationResolver(
+          new ConfigReader({
+            catalog: {
+              providers: {
+                aap: {
+                  dev: {
+                    orgs: ['Platform'],
+                    multiOrgEnabled: true,
+                    ...identitySync,
+                  },
+                },
+                rhaap: {
+                  dev: {
+                    orgs: ['Engineering', 'Finance'],
+                    multiOrgEnabled: true,
+                    ...identitySync,
+                  },
+                },
+              },
+            },
+          }),
+          client,
+        ),
+    ).toThrow('organizations (platform)');
+  });
+
+  it('uses the aap organization list when both roots publish the same identity', async () => {
+    const identitySync = {
+      sync: {
+        orgsUsersTeams: {
+          schedule: { frequency: { minutes: 30 }, timeout: { minutes: 3 } },
+        },
+      },
+    };
     const both = new RhaapOrganizationResolver(
       new ConfigReader({
         catalog: {
           providers: {
             aap: {
-              dev: { orgs: ['Platform'], multiOrgEnabled: true },
+              dev: {
+                orgs: ['Engineering', 'Finance'],
+                multiOrgEnabled: true,
+                ...identitySync,
+              },
             },
             rhaap: {
-              dev: { orgs: ['Engineering', 'Finance'], multiOrgEnabled: true },
+              dev: {
+                orgs: ['Engineering', 'Finance'],
+                multiOrgEnabled: true,
+                ...identitySync,
+              },
             },
           },
         },
@@ -107,9 +158,33 @@ describe('Trusted AAP organization resolution', () => {
           new ConfigReader({
             catalog: {
               providers: {
-                aap: { dev: { orgs: ['Platform'], multiOrgEnabled: false } },
+                aap: {
+                  dev: {
+                    orgs: ['Platform'],
+                    multiOrgEnabled: false,
+                    sync: {
+                      orgsUsersTeams: {
+                        schedule: {
+                          frequency: { minutes: 30 },
+                          timeout: { minutes: 3 },
+                        },
+                      },
+                    },
+                  },
+                },
                 rhaap: {
-                  prod: { orgs: ['Engineering'], multiOrgEnabled: true },
+                  prod: {
+                    orgs: ['Engineering'],
+                    multiOrgEnabled: true,
+                    sync: {
+                      orgsUsersTeams: {
+                        schedule: {
+                          frequency: { minutes: 30 },
+                          timeout: { minutes: 3 },
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -120,22 +195,97 @@ describe('Trusted AAP organization resolution', () => {
   });
 
   it('rejects dual roots that disagree on multiOrgEnabled', () => {
+    const identitySync = {
+      sync: {
+        orgsUsersTeams: {
+          schedule: { frequency: { minutes: 30 }, timeout: { minutes: 3 } },
+        },
+      },
+    };
     expect(
       () =>
         new RhaapOrganizationResolver(
           new ConfigReader({
             catalog: {
               providers: {
-                aap: { dev: { orgs: ['Platform'], multiOrgEnabled: true } },
+                aap: {
+                  dev: {
+                    orgs: ['Platform'],
+                    multiOrgEnabled: true,
+                    ...identitySync,
+                  },
+                },
                 rhaap: {
-                  dev: { orgs: ['Engineering'], multiOrgEnabled: false },
+                  dev: {
+                    orgs: ['Platform'],
+                    multiOrgEnabled: false,
+                    ...identitySync,
+                  },
                 },
               },
             },
           }),
           client,
         ),
-    ).toThrow('catalog.providers.aap multiOrgEnabled (true)');
+    ).toThrow('sign-in identity mode');
+  });
+
+  it('does not treat job-template organization settings as identity publishers', () => {
+    expect(
+      () =>
+        new RhaapOrganizationResolver(
+          new ConfigReader({
+            catalog: {
+              providers: {
+                aap: {
+                  dev: {
+                    orgs: ['Platform'],
+                    multiOrgEnabled: true,
+                    sync: {
+                      orgsUsersTeams: {
+                        schedule: {
+                          frequency: { minutes: 30 },
+                          timeout: { minutes: 3 },
+                        },
+                      },
+                    },
+                  },
+                },
+                rhaap: {
+                  dev: {
+                    orgs: ['Engineering'],
+                    multiOrgEnabled: false,
+                    sync: {
+                      jobTemplates: {
+                        enabled: true,
+                        schedule: {
+                          frequency: { minutes: 30 },
+                          timeout: { minutes: 3 },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          }),
+          client,
+        ),
+    ).not.toThrow();
+  });
+
+  it('uses the default organization when orgs is omitted', async () => {
+    client.getUserInfoById.mockResolvedValue({
+      id: 42,
+      username: 'Alice',
+      is_superuser: false,
+    });
+    client.getOrgsByUserId.mockResolvedValue([{ name: 'Default' }]);
+    client.getTeamsByUserId.mockResolvedValue([]);
+    await expect(
+      resolver({ dev: {} }).resolveAll(credentials('user:default/Alice')),
+    ).resolves.toEqual(['default']);
+    expect(client.getOrgsByUserId).toHaveBeenCalledWith(42, ['default']);
   });
 
   it('resolves memberships from catalog.providers.aap without a legacy rhaap copy', async () => {
@@ -269,7 +419,6 @@ describe('Trusted AAP organization resolution', () => {
 
   it.each([
     {},
-    { dev: {} },
     { dev: { orgs: [] } },
     { dev: { orgs: '' } },
     { dev: { orgs: ['Engineering', ' '] } },
