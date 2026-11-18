@@ -20,7 +20,9 @@ import {
   generateSourceId,
   getCatalogProvidersConfigRoot,
   getDefaultHost,
+  getResolvedAapProvidersConfig,
   getResolvedCatalogProvidersConfig,
+  isAapMultiOrgEnabled,
   pahCollectionParser,
   readAapApiEntityConfigs,
   repositoryParser,
@@ -103,6 +105,8 @@ describe('catalog barrel', () => {
     expect(
       getResolvedCatalogProvidersConfig(new ConfigReader({}))?.keys(),
     ).toBeUndefined();
+    expect(typeof getResolvedAapProvidersConfig).toBe('function');
+    expect(isAapMultiOrgEnabled()).toBe(false);
   });
 
   it('re-exports collection naming helpers used by the content slice', () => {

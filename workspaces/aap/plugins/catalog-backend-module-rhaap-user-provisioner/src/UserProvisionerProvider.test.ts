@@ -310,6 +310,37 @@ describe('UserProvisionerProvider', () => {
   });
 
   describe('multi-org config', () => {
+    it('names users from catalog.providers.aap without a legacy rhaap copy', async () => {
+      const config = new ConfigReader({
+        ansible: { rhaap: { baseUrl: MOCK_BASE_URL } },
+        catalog: {
+          providers: {
+            aap: { dev: { orgs: ['Default'], multiOrgEnabled: true } },
+          },
+        },
+      });
+      mockAnsibleService.getUserInfoById.mockResolvedValue(MOCK_SUPERUSER);
+      mockAnsibleService.listSystemUsers.mockResolvedValue([MOCK_SUPERUSER]);
+      const idProvisioner = new UserProvisionerProvider({
+        ansibleService: mockAnsibleService,
+        config,
+        logger: mockServices.logger.mock(),
+      });
+      await idProvisioner.connect(mockConnection);
+      await idProvisioner.createUser('admin', 1);
+      const entities =
+        mockConnection.applyMutation.mock.calls[0][0].type === 'delta'
+          ? (
+              mockConnection.applyMutation.mock.calls[0][0] as {
+                added: Array<{ entity: any }>;
+              }
+            ).added.map(item => item.entity)
+          : [];
+      expect(entities.find(item => item.kind === 'User').metadata.name).toBe(
+        'aap-user-1',
+      );
+    });
+
     it('keeps single-org flag-on user and admin identities aligned with auth', async () => {
       const config = new ConfigReader({
         ansible: { rhaap: { baseUrl: MOCK_BASE_URL } },

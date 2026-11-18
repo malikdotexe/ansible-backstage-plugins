@@ -50,6 +50,30 @@ describe('Trusted AAP organization resolution', () => {
     ]);
   });
 
+  it('resolves memberships from catalog.providers.aap without a legacy rhaap copy', async () => {
+    const split = new RhaapOrganizationResolver(
+      new ConfigReader({
+        catalog: {
+          providers: {
+            aap: {
+              dev: { orgs: ['Engineering', 'Finance'], multiOrgEnabled: true },
+            },
+          },
+        },
+      }),
+      client,
+    );
+    await expect(split.resolveAll(credentials())).resolves.toEqual([
+      'engineering',
+      'finance',
+    ]);
+    expect(client.executeGetRequest).not.toHaveBeenCalled();
+    expect(client.getOrgsByUserId).toHaveBeenCalledWith(42, [
+      'engineering',
+      'finance',
+    ]);
+  });
+
   it('normalizes and deduplicates direct and team memberships without trusting the catalog namespace', async () => {
     await expect(resolver().resolveAll(credentials())).resolves.toEqual([
       'engineering',

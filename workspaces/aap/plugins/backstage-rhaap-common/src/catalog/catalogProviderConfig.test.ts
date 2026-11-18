@@ -9,7 +9,9 @@ import {
   CATALOG_PROVIDERS_RHAAP,
   catalogProvidersConfigRootForSlice,
   getCatalogProvidersConfigRoot,
+  getResolvedAapProvidersConfig,
   getResolvedCatalogProvidersConfig,
+  isAapMultiOrgEnabled,
   runWithCatalogProvidersConfigRoot,
 } from './catalogProviderConfig';
 import { readAapApiEntityConfigs } from './providers/config';
@@ -102,5 +104,36 @@ describe('catalogProviderConfig', () => {
       await Promise.resolve();
       expect(getCatalogProvidersConfigRoot()).toBe(CATALOG_PROVIDERS_AAP);
     });
+  });
+
+  it('resolves AAP identity config from catalog.providers.aap without a legacy copy', () => {
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          aap: {
+            development: { multiOrgEnabled: true, orgs: ['Engineering'] },
+          },
+        },
+      },
+    });
+
+    expect(getResolvedAapProvidersConfig(config)?.keys()).toEqual([
+      'development',
+    ]);
+    expect(isAapMultiOrgEnabled(config)).toBe(true);
+  });
+
+  it('falls back to legacy rhaap for AAP identity when aap is unset', () => {
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          rhaap: {
+            development: { multiOrgEnabled: true },
+          },
+        },
+      },
+    });
+
+    expect(isAapMultiOrgEnabled(config)).toBe(true);
   });
 });

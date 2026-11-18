@@ -10,6 +10,7 @@ import {
   AAPClient,
   resolveActiveOrganizations,
 } from '@ansible/backstage-rhaap-common';
+import { getResolvedAapProvidersConfig } from '@ansible/backstage-rhaap-common/catalog';
 import {
   portalActiveOrganizationServiceRef,
   type ActiveOrganizationResolver,
@@ -55,9 +56,7 @@ export class RhaapOrganizationResolver implements ActiveOrganizationResolver {
         return [];
       const match = /^user:default\/([^/]+)$/i.exec(principal.userEntityRef);
       if (!match) return [];
-      const providers = this.config.getOptionalConfig(
-        'catalog.providers.rhaap',
-      );
+      const providers = getResolvedAapProvidersConfig(this.config);
       if (!providers || providers.keys().length === 0) return [];
       const configured = new Set<string>();
       let multiOrgEnabled = false;

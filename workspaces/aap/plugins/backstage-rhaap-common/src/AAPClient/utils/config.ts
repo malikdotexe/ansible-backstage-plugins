@@ -1,6 +1,7 @@
 import { Config } from '@backstage/config';
 import { ScmIntegrations } from '@backstage/integration';
 
+import { getResolvedAapProvidersConfig } from '../../catalog/catalogProviderConfig';
 import { AnsibleConfig, CatalogConfig } from '../../types';
 
 export function getAnsibleConfig(config: Config): AnsibleConfig {
@@ -56,9 +57,7 @@ export function getAnsibleConfig(config: Config): AnsibleConfig {
 }
 
 export function getCatalogConfig(rootConfig: Config): CatalogConfig {
-  const catalogRhaapConfig = rootConfig.getOptionalConfig(
-    'catalog.providers.rhaap',
-  );
+  const catalogRhaapConfig = getResolvedAapProvidersConfig(rootConfig);
   const catalogConfig: CatalogConfig = {
     organizations: [],
     surveyEnabled: undefined,

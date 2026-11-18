@@ -1,4 +1,6 @@
-import { findMissingConfiguredOrganizations } from './config';
+import { ConfigReader } from '@backstage/config';
+
+import { findMissingConfiguredOrganizations, getCatalogConfig } from './config';
 
 describe('findMissingConfiguredOrganizations', () => {
   it('returns empty when all configured orgs exist in AAP', () => {
@@ -29,6 +31,28 @@ describe('findMissingConfiguredOrganizations', () => {
     expect(findMissingConfiguredOrganizations(['Default', 'Ops'], [])).toEqual([
       'Default',
       'Ops',
+    ]);
+  });
+});
+
+describe('getCatalogConfig', () => {
+  it('reads organizations from catalog.providers.aap without a legacy rhaap copy', () => {
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          aap: {
+            development: {
+              multiOrgEnabled: true,
+              orgs: ['Engineering', 'Finance'],
+            },
+          },
+        },
+      },
+    });
+
+    expect(getCatalogConfig(config).organizations).toEqual([
+      'engineering',
+      'finance',
     ]);
   });
 });

@@ -23,7 +23,10 @@ export {
   CATALOG_PROVIDERS_RHAAP,
   catalogProvidersConfigRootForSlice,
   getCatalogProvidersConfigRoot,
+  getResolvedAapProvidersConfig,
   getResolvedCatalogProvidersConfig,
+  isAapMultiOrgEnabled,
+  resolveCatalogProvidersConfig,
   runWithCatalogProvidersConfigRoot,
 } from './catalogProviderConfig';
 export { readAapApiEntityConfigs } from './providers/config';

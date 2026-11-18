@@ -51,6 +51,20 @@ export function getCatalogProvidersConfigRoot(): string {
   return catalogProvidersRootStorage.getStore() ?? CATALOG_PROVIDERS_RHAAP;
 }
 
+export function resolveCatalogProvidersConfig(
+  config: Config,
+  primaryRoot: string,
+): Config | undefined {
+  const primaryConfig = config.getOptionalConfig(primaryRoot);
+  if (primaryConfig) {
+    return primaryConfig;
+  }
+  if (primaryRoot !== CATALOG_PROVIDERS_RHAAP) {
+    return config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
+  }
+  return undefined;
+}
+
 /**
  * Resolves catalog provider env config for the active module slice.
  * Split modules fall back to legacy `catalog.providers.rhaap` when their key is unset.
@@ -58,13 +72,31 @@ export function getCatalogProvidersConfigRoot(): string {
 export function getResolvedCatalogProvidersConfig(
   config: Config,
 ): Config | undefined {
-  const primary = getCatalogProvidersConfigRoot();
-  const primaryConfig = config.getOptionalConfig(primary);
-  if (primaryConfig) {
-    return primaryConfig;
+  return resolveCatalogProvidersConfig(config, getCatalogProvidersConfigRoot());
+}
+
+/**
+ * AAP identity/auth/membership config is not slice-ALS-scoped.
+ * Prefer `catalog.providers.aap`, then legacy `catalog.providers.rhaap`.
+ */
+export function getResolvedAapProvidersConfig(
+  config: Config,
+): Config | undefined {
+  return resolveCatalogProvidersConfig(config, CATALOG_PROVIDERS_AAP);
+}
+
+export function isAapMultiOrgEnabled(config?: Config): boolean {
+  if (!config) {
+    return false;
   }
-  if (primary !== CATALOG_PROVIDERS_RHAAP) {
-    return config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
-  }
-  return undefined;
+  const providers = getResolvedAapProvidersConfig(config);
+  return (
+    providers
+      ?.keys()
+      .some(
+        key =>
+          providers.getConfig(key).getOptionalBoolean('multiOrgEnabled') ===
+          true,
+      ) ?? false
+  );
 }
