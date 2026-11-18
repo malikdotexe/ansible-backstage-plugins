@@ -372,6 +372,27 @@ describe('catalogProviderConfig', () => {
     expect(isAapMultiOrgEnabled(config)).toBe(true);
   });
 
+  it('does not treat a catalog env without has() as an identity publisher', () => {
+    const config = {
+      getOptionalConfig: (path: string) => {
+        if (path === CATALOG_PROVIDERS_RHAAP) {
+          return {
+            keys: () => ['development'],
+            getConfig: () => ({
+              getOptionalBoolean: () => false,
+            }),
+          };
+        }
+        return undefined;
+      },
+    } as unknown as ConfigReader;
+
+    expect(getResolvedAapProvidersConfig(config)?.keys()).toEqual([
+      'development',
+    ]);
+    expect(isAapMultiOrgEnabled(config)).toBe(false);
+  });
+
   it('falls back to legacy rhaap for AAP identity when aap is unset', () => {
     const config = new ConfigReader({
       catalog: {

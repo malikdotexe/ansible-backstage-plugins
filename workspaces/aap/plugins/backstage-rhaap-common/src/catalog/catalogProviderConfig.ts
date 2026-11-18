@@ -53,7 +53,7 @@ export function getCatalogProvidersConfigRoot(): string {
 }
 
 export function envPublishesAapIdentity(env: Config): boolean {
-  if (!env.has('sync.orgsUsersTeams')) {
+  if (typeof env.has !== 'function' || !env.has('sync.orgsUsersTeams')) {
     return false;
   }
   return !(
