@@ -71,16 +71,21 @@ function identityEnvEntries(root: Config): Array<{ key: string; env: Config }> {
 
 function configuredOrgNames(env: Config): string[] {
   const raw = env.getOptional('orgs');
-  const values =
-    typeof raw === 'string' ? raw.split(',') : Array.isArray(raw) ? raw : [];
+  let values: unknown[] = [];
+  if (typeof raw === 'string') {
+    values = raw.split(',');
+  } else if (Array.isArray(raw)) {
+    values = raw;
+  }
   const names = values
     .filter((name): name is string => typeof name === 'string')
     .map(name => name.trim().toLowerCase())
     .filter(name => name.length > 0);
   const resolved = names.length > 0 ? names : ['default'];
-  return env.getOptionalBoolean('multiOrgEnabled') === true
-    ? resolved
-    : [resolved[0]];
+  if (env.getOptionalBoolean('multiOrgEnabled') === true) {
+    return resolved;
+  }
+  return [resolved[0]];
 }
 
 function organizationListKey(envs: Config[]): string {
