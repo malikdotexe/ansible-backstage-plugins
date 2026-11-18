@@ -204,7 +204,7 @@ export namespace AAPAuthSignInResolvers {
           }
 
           const lastErrorMessage =
-            lastError instanceof Error ? lastError.message : String(lastError);
+            lastError instanceof Error ? lastError.message : 'unknown error';
           throw new AuthenticationError(
             `Sign in failed: User ${username} not found in catalog after provisioning. ` +
               `This may indicate a configuration issue with organization membership or catalog sync. ` +
