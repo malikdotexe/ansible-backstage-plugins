@@ -12,6 +12,8 @@ import { catalogProcessingExtensionPoint } from '@backstage/plugin-catalog-node'
 import { signalsServiceRef } from '@backstage/plugin-signals-node';
 
 import { ansibleServiceFactory } from '../AAPService/AAPService';
+import { AAPEntityProvider } from './providers/AAPEntityProvider';
+import { AAPJobTemplateProvider } from './providers/AAPJobTemplateProvider';
 import { createCatalogModule } from './registerModule';
 import { MOCK_CONFIG } from './mock';
 import { resetCatalogModuleSliceGuardForTests } from './sliceGuard';
@@ -213,6 +215,20 @@ describe('createCatalogModule', () => {
   });
 
   it('registers AAP entity providers from catalog.providers.aap with rhaap fallback', async () => {
+    const { AAPEntityProvider: ActualAAPEntityProvider } = jest.requireActual(
+      './providers/AAPEntityProvider',
+    );
+    const { AAPJobTemplateProvider: ActualAAPJobTemplateProvider } =
+      jest.requireActual('./providers/AAPJobTemplateProvider');
+    (AAPEntityProvider.fromConfig as jest.Mock).mockImplementation(
+      ActualAAPEntityProvider.fromConfig.bind(ActualAAPEntityProvider),
+    );
+    (AAPJobTemplateProvider.fromConfig as jest.Mock).mockImplementation(
+      ActualAAPJobTemplateProvider.fromConfig.bind(
+        ActualAAPJobTemplateProvider,
+      ),
+    );
+
     let addedProviderCount = 0;
     let usedSchedule: SchedulerServiceTaskScheduleDefinition | undefined;
 
