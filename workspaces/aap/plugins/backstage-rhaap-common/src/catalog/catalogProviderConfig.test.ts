@@ -12,6 +12,7 @@ import {
   getResolvedAapProvidersConfig,
   getResolvedCatalogProvidersConfig,
   isAapMultiOrgEnabled,
+  legacyRootPublishesAapIdentity,
   runWithCatalogProvidersConfigRoot,
 } from './catalogProviderConfig';
 import { readAapApiEntityConfigs } from './providers/config';
@@ -154,11 +155,61 @@ describe('catalogProviderConfig', () => {
     });
 
     expect(() => getResolvedAapProvidersConfig(config)).toThrow(
-      'catalog.providers.aap.development.multiOrgEnabled',
+      'catalog.providers.aap multiOrgEnabled (true)',
     );
     expect(() => getResolvedCatalogProvidersConfig(config)).toThrow(
-      'catalog.providers.rhaap.development.multiOrgEnabled',
+      'catalog.providers.rhaap multiOrgEnabled (false)',
     );
+  });
+
+  it('rejects identity modes that differ across environment keys', () => {
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          aap: { development: { multiOrgEnabled: true, orgs: ['Platform'] } },
+          rhaap: {
+            production: {
+              multiOrgEnabled: false,
+              orgs: ['Default'],
+              sync: {
+                orgsUsersTeams: {
+                  schedule: {
+                    frequency: { minutes: 30 },
+                    timeout: { minutes: 3 },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    expect(legacyRootPublishesAapIdentity(config)).toBe(true);
+    expect(() => getResolvedAapProvidersConfig(config)).toThrow(
+      'must use the same identity mode',
+    );
+  });
+
+  it('ignores content-only legacy config when validating AAP identity mode', () => {
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          aap: { production: { multiOrgEnabled: true, orgs: ['Platform'] } },
+          rhaap: {
+            production: {
+              sync: { ansibleGitContents: { enabled: true } },
+            },
+          },
+        },
+      },
+    });
+
+    expect(legacyRootPublishesAapIdentity(config)).toBe(false);
+    expect(getResolvedAapProvidersConfig(config)?.keys()).toEqual([
+      'production',
+    ]);
+    expect(isAapMultiOrgEnabled(config)).toBe(true);
   });
 
   it('falls back to legacy rhaap for AAP identity when aap is unset', () => {

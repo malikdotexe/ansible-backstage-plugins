@@ -14,6 +14,7 @@ import {
   CATALOG_PROVIDERS_AAP,
   CATALOG_PROVIDERS_RHAAP,
   getResolvedAapProvidersConfig,
+  legacyRootPublishesAapIdentity,
 } from '@ansible/backstage-rhaap-common/catalog';
 import {
   portalActiveOrganizationServiceRef,
@@ -29,16 +30,17 @@ type MembershipClient = Pick<
 >;
 
 /**
- * Membership scope follows the catalog root that actually publishes entities.
- * The legacy all module publishes `rhaap` whenever that root is set.
- * AAP-only deployments have no `rhaap` root, so they use `aap`.
+ * Membership uses the same identity mode as sign-in.
+ * When legacy `rhaap` publishes users, read that root so membership matches
+ * the all module. Content-only `rhaap` is ignored and membership follows `aap`.
  */
 function organizationProviderConfig(config: Config): Config | undefined {
   getResolvedAapProvidersConfig(config);
-  const rhaap = config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
-  const aap = config.getOptionalConfig(CATALOG_PROVIDERS_AAP);
-  if (rhaap && aap) {
-    return rhaap;
+  if (
+    legacyRootPublishesAapIdentity(config) &&
+    config.getOptionalConfig(CATALOG_PROVIDERS_AAP)
+  ) {
+    return config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
   }
   return getResolvedAapProvidersConfig(config);
 }

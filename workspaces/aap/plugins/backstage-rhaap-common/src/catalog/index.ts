@@ -26,6 +26,7 @@ export {
   getResolvedAapProvidersConfig,
   getResolvedCatalogProvidersConfig,
   isAapMultiOrgEnabled,
+  legacyRootPublishesAapIdentity,
   resolveCatalogProvidersConfig,
   runWithCatalogProvidersConfigRoot,
 } from './catalogProviderConfig';

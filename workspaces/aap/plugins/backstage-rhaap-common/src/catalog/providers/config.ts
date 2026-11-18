@@ -38,7 +38,13 @@ export function readAapApiEntityConfigs(
       // Identity-only environments have no sync block. Skip the provider
       // instead of failing startup on a missing schedule.
       if (!catalogConfig.has(syncPath)) return null;
-      if (!catalogConfig.has(`${syncPath}.schedule`)) {
+      // Job templates are opt-in. A disabled block needs no schedule, and an
+      // omitted schedule can still use the task runner passed to fromConfig.
+      // Require a config schedule only when the block is explicitly enabled.
+      const scheduleRequired =
+        syncEntity !== 'jobTemplates' ||
+        catalogConfig.getOptionalBoolean(`${syncPath}.enabled`) === true;
+      if (scheduleRequired && !catalogConfig.has(`${syncPath}.schedule`)) {
         throw new InputError(
           `No schedule provided via config for ${syncPath}.schedule on catalog provider "${id}".`,
         );

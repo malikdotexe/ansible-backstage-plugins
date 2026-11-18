@@ -76,6 +76,49 @@ describe('Trusted AAP organization resolution', () => {
     ]);
   });
 
+  it('follows aap membership when legacy rhaap is content-only', async () => {
+    const split = new RhaapOrganizationResolver(
+      new ConfigReader({
+        catalog: {
+          providers: {
+            aap: {
+              dev: { orgs: ['Engineering', 'Finance'], multiOrgEnabled: true },
+            },
+            rhaap: {
+              production: {
+                sync: { ansibleGitContents: { enabled: true } },
+              },
+            },
+          },
+        },
+      }),
+      client,
+    );
+    await expect(split.resolveAll(credentials())).resolves.toEqual([
+      'engineering',
+      'finance',
+    ]);
+  });
+
+  it('rejects identity modes that differ across environment keys', () => {
+    expect(
+      () =>
+        new RhaapOrganizationResolver(
+          new ConfigReader({
+            catalog: {
+              providers: {
+                aap: { dev: { orgs: ['Platform'], multiOrgEnabled: false } },
+                rhaap: {
+                  prod: { orgs: ['Engineering'], multiOrgEnabled: true },
+                },
+              },
+            },
+          }),
+          client,
+        ),
+    ).toThrow('must use the same identity mode');
+  });
+
   it('rejects dual roots that disagree on multiOrgEnabled', () => {
     expect(
       () =>
@@ -92,7 +135,7 @@ describe('Trusted AAP organization resolution', () => {
           }),
           client,
         ),
-    ).toThrow('catalog.providers.aap.dev.multiOrgEnabled');
+    ).toThrow('catalog.providers.aap multiOrgEnabled (true)');
   });
 
   it('resolves memberships from catalog.providers.aap without a legacy rhaap copy', async () => {

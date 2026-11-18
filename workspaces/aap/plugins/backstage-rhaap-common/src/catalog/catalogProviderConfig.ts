@@ -52,13 +52,41 @@ export function getCatalogProvidersConfigRoot(): string {
   return catalogProvidersRootStorage.getStore() ?? CATALOG_PROVIDERS_RHAAP;
 }
 
-function multiOrgEnabledFor(provider: Config): boolean {
-  return provider.getOptionalBoolean('multiOrgEnabled') ?? false;
+function envPublishesAapIdentity(env: Config): boolean {
+  return (
+    env.has('multiOrgEnabled') ||
+    env.has('orgs') ||
+    env.has('sync.orgsUsersTeams')
+  );
+}
+
+function identityEnvs(root: Config): Config[] {
+  return root
+    .keys()
+    .filter(key => envPublishesAapIdentity(root.getConfig(key)))
+    .map(key => root.getConfig(key));
+}
+
+function effectiveMultiOrg(envs: Config[]): boolean {
+  return envs.some(env => env.getOptionalBoolean('multiOrgEnabled') === true);
 }
 
 /**
- * Catalog sync, sign-in, and provisioning must build the same user ref.
- * Reject a shared environment whose roots disagree on multiOrgEnabled.
+ * True when legacy `catalog.providers.rhaap` publishes AAP users.
+ * Git-only or job-template-only entries do not.
+ */
+export function legacyRootPublishesAapIdentity(config: Config): boolean {
+  const rhaap = config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
+  if (!rhaap) {
+    return false;
+  }
+  return identityEnvs(rhaap).length > 0;
+}
+
+/**
+ * Sign-in, provisioning, membership, and catalog sync must share one identity
+ * mode. Compare every identity-publishing environment, including different
+ * keys. Content-only legacy entries are ignored. A single root is unchanged.
  */
 export function assertNoConflictingAapIdentityMode(config: Config): void {
   const aap = config.getOptionalConfig(CATALOG_PROVIDERS_AAP);
@@ -66,17 +94,17 @@ export function assertNoConflictingAapIdentityMode(config: Config): void {
   if (!aap || !rhaap) {
     return;
   }
-  for (const key of aap.keys()) {
-    if (!rhaap.has(key)) {
-      continue;
-    }
-    const aapMode = multiOrgEnabledFor(aap.getConfig(key));
-    const rhaapMode = multiOrgEnabledFor(rhaap.getConfig(key));
-    if (aapMode !== rhaapMode) {
-      throw new InputError(
-        `catalog.providers.aap.${key}.multiOrgEnabled (${aapMode}) disagrees with catalog.providers.rhaap.${key}.multiOrgEnabled (${rhaapMode}). Catalog sync, sign-in, and provisioning must use the same identity mode.`,
-      );
-    }
+  const aapEnvs = identityEnvs(aap);
+  const rhaapEnvs = identityEnvs(rhaap);
+  if (aapEnvs.length === 0 || rhaapEnvs.length === 0) {
+    return;
+  }
+  const aapMode = effectiveMultiOrg(aapEnvs);
+  const rhaapMode = effectiveMultiOrg(rhaapEnvs);
+  if (aapMode !== rhaapMode) {
+    throw new InputError(
+      `catalog.providers.aap multiOrgEnabled (${aapMode}) disagrees with catalog.providers.rhaap multiOrgEnabled (${rhaapMode}). Catalog sync, sign-in, provisioning, and membership must use the same identity mode.`,
+    );
   }
 }
 

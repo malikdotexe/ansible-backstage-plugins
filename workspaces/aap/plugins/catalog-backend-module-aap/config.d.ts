@@ -17,13 +17,21 @@ export interface Config {
             orgsUsersTeams?: {
               schedule: SchedulerServiceTaskScheduleDefinitionConfig;
             };
-            jobTemplates?: {
-              enabled: boolean;
-              labels?: Array<string>;
-              excludeLabels?: Array<string>;
-              surveyEnabled?: boolean;
-              schedule: SchedulerServiceTaskScheduleDefinitionConfig;
-            };
+            jobTemplates?:
+              | {
+                  enabled: false;
+                  labels?: Array<string>;
+                  excludeLabels?: Array<string>;
+                  surveyEnabled?: boolean;
+                  schedule?: SchedulerServiceTaskScheduleDefinitionConfig;
+                }
+              | {
+                  enabled: true;
+                  labels?: Array<string>;
+                  excludeLabels?: Array<string>;
+                  surveyEnabled?: boolean;
+                  schedule: SchedulerServiceTaskScheduleDefinitionConfig;
+                };
           };
         };
       };
