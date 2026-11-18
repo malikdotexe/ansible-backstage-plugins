@@ -46,10 +46,7 @@ const SUPERUSER_ANNOTATION = 'aap.platform/is_superuser';
  * entity.relations before the catalog has stitched memberOf relations
  * for newly created users.
  */
-async function issueTokenWithOwnership(
-  ctx: AuthResolverContext,
-  entity: Entity,
-) {
+function issueTokenWithOwnership(ctx: AuthResolverContext, entity: Entity) {
   const userRef = stringifyEntityRef(entity);
 
   const memberOfRefs =
@@ -206,10 +203,12 @@ export namespace AAPAuthSignInResolvers {
             }
           }
 
+          const lastErrorMessage =
+            lastError instanceof Error ? lastError.message : String(lastError);
           throw new AuthenticationError(
             `Sign in failed: User ${username} not found in catalog after provisioning. ` +
               `This may indicate a configuration issue with organization membership or catalog sync. ` +
-              `Verify that users/groups are synchronized to the software catalog. Error: ${lastError}`,
+              `Verify that users/groups are synchronized to the software catalog. Error: ${lastErrorMessage}`,
           );
         };
       },
