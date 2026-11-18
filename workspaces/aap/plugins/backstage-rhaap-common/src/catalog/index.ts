@@ -23,6 +23,7 @@ export {
   CATALOG_PROVIDERS_RHAAP,
   catalogProvidersConfigRootForSlice,
   getCatalogProvidersConfigRoot,
+  envPublishesAapIdentity,
   getResolvedAapProvidersConfig,
   getResolvedCatalogProvidersConfig,
   isAapMultiOrgEnabled,

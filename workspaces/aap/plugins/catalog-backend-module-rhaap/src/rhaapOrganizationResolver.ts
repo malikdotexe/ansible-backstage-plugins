@@ -10,7 +10,10 @@ import {
   AAPClient,
   resolveActiveOrganizations,
 } from '@ansible/backstage-rhaap-common';
-import { getResolvedAapProvidersConfig } from '@ansible/backstage-rhaap-common/catalog';
+import {
+  envPublishesAapIdentity,
+  getResolvedAapProvidersConfig,
+} from '@ansible/backstage-rhaap-common/catalog';
 import {
   portalActiveOrganizationServiceRef,
   type ActiveOrganizationResolver,
@@ -72,6 +75,9 @@ export class RhaapOrganizationResolver implements ActiveOrganizationResolver {
       let multiOrgEnabled = false;
       for (const key of providers.keys()) {
         const provider = providers.getConfig(key);
+        if (provider.has('sync') && !envPublishesAapIdentity(provider)) {
+          continue;
+        }
         if (!provider.has('orgs')) {
           resolveActiveOrganizations(provider).forEach(name =>
             configured.add(name),

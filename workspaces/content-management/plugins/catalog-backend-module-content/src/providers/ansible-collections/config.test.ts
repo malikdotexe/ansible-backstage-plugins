@@ -10,6 +10,7 @@ describe('config', () => {
   beforeAll(() => {
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterAll(() => {
@@ -61,6 +62,56 @@ describe('config', () => {
         () => readAnsibleGitContentsConfigs(config),
       );
       expect(sources.map(source => source.organization)).toEqual(['acme']);
+    });
+
+    it('warns when a content root is present alongside legacy rhaap Git sources', () => {
+      const schedule = {
+        frequency: { minutes: 30 },
+        timeout: { minutes: 3 },
+      };
+      const config = new ConfigReader({
+        catalog: {
+          providers: {
+            content: {
+              dev: {
+                sync: {
+                  ansibleGitContents: {
+                    schedule,
+                    providers: {
+                      github: [{ name: 'internal', orgs: [{ name: 'acme' }] }],
+                    },
+                  },
+                },
+              },
+            },
+            rhaap: {
+              production: {
+                sync: {
+                  ansibleGitContents: {
+                    schedule,
+                    providers: {
+                      github: [
+                        { name: 'legacy', orgs: [{ name: 'legacy-org' }] },
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const sources = runWithCatalogProvidersConfigRoot(
+        'catalog.providers.content',
+        () => readAnsibleGitContentsConfigs(config),
+      );
+      expect(sources.map(source => source.organization)).toEqual(['acme']);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Git sources under catalog.providers.rhaap.sync.ansibleGitContents are ignored',
+        ),
+      );
     });
 
     it('should return empty array when no rhaap config exists', () => {

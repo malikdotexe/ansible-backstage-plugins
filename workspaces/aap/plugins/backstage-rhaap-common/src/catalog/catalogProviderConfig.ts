@@ -52,7 +52,7 @@ export function getCatalogProvidersConfigRoot(): string {
   return catalogProvidersRootStorage.getStore() ?? CATALOG_PROVIDERS_RHAAP;
 }
 
-function envPublishesAapIdentity(env: Config): boolean {
+export function envPublishesAapIdentity(env: Config): boolean {
   if (!env.has('sync.orgsUsersTeams')) {
     return false;
   }
@@ -88,20 +88,50 @@ function configuredOrgNames(env: Config): string[] {
   return [resolved[0]];
 }
 
-function organizationListKey(envs: Config[]): string {
+function organizationNames(envs: Config[]): string[] {
   const names = new Set<string>();
   for (const env of envs) {
     for (const name of configuredOrgNames(env)) {
       names.add(name);
     }
   }
-  return [...names].sort((left, right) => left.localeCompare(right)).join(',');
+  return [...names].sort((left, right) => left.localeCompare(right));
+}
+
+function sameOrganizationNames(left: string[], right: string[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((name, index) => name === right[index])
+  );
+}
+
+function identityPublishingRoot(config: Config): Config | undefined {
+  const aap = config.getOptionalConfig(CATALOG_PROVIDERS_AAP);
+  const rhaap = config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
+  if (aap && identityEnvEntries(aap).length > 0) {
+    return aap;
+  }
+  if (rhaap && identityEnvEntries(rhaap).length > 0) {
+    return rhaap;
+  }
+  return aap ?? rhaap;
 }
 
 function signInMultiOrgEnabled(config: Config): boolean {
-  const providers =
-    config.getOptionalConfig(CATALOG_PROVIDERS_AAP) ??
-    config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
+  const aap = config.getOptionalConfig(CATALOG_PROVIDERS_AAP);
+  const rhaap = config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
+  let identityEnvs: Array<{ key: string; env: Config }> = [];
+  if (aap && identityEnvEntries(aap).length > 0) {
+    identityEnvs = identityEnvEntries(aap);
+  } else if (rhaap) {
+    identityEnvs = identityEnvEntries(rhaap);
+  }
+  if (identityEnvs.length > 0) {
+    return identityEnvs.some(
+      entry => entry.env.getOptionalBoolean('multiOrgEnabled') === true,
+    );
+  }
+  const providers = aap ?? rhaap;
   return (
     providers
       ?.keys()
@@ -155,13 +185,13 @@ export function assertNoConflictingAapIdentityMode(config: Config): void {
   if (aapEnvs.length === 0 || rhaapEnvs.length === 0) {
     return;
   }
-  const aapOrganizations = organizationListKey(aapEnvs.map(entry => entry.env));
-  const rhaapOrganizations = organizationListKey(
+  const aapOrganizations = organizationNames(aapEnvs.map(entry => entry.env));
+  const rhaapOrganizations = organizationNames(
     rhaapEnvs.map(entry => entry.env),
   );
-  if (aapOrganizations !== rhaapOrganizations) {
+  if (!sameOrganizationNames(aapOrganizations, rhaapOrganizations)) {
     throw new InputError(
-      `catalog.providers.aap organizations (${aapOrganizations}) disagree with catalog.providers.rhaap organizations (${rhaapOrganizations}). Provisioning and membership must use the same organization list.`,
+      `catalog.providers.aap organizations (${aapOrganizations.join(', ')}) disagree with catalog.providers.rhaap organizations (${rhaapOrganizations.join(', ')}). Provisioning and membership must use the same organization list.`,
     );
   }
 }
@@ -220,7 +250,8 @@ export function getProviderScopedCatalogConfig(
 export function getResolvedAapProvidersConfig(
   config: Config,
 ): Config | undefined {
-  return resolveCatalogProvidersConfig(config, CATALOG_PROVIDERS_AAP);
+  assertNoConflictingAapIdentityMode(config);
+  return identityPublishingRoot(config);
 }
 
 export function isAapMultiOrgEnabled(config?: Config): boolean {

@@ -241,14 +241,62 @@ describe('catalogProviderConfig', () => {
   });
 
   it('rejects identity modes that differ across environment keys', () => {
+    const identitySync = {
+      sync: {
+        orgsUsersTeams: {
+          schedule: { frequency: { minutes: 30 }, timeout: { minutes: 3 } },
+        },
+      },
+    };
     const config = new ConfigReader({
       catalog: {
         providers: {
-          aap: { development: { multiOrgEnabled: true, orgs: ['Platform'] } },
+          aap: {
+            development: {
+              multiOrgEnabled: true,
+              orgs: ['Platform'],
+              ...identitySync,
+            },
+          },
           rhaap: {
             production: {
               multiOrgEnabled: false,
               orgs: ['Default'],
+              ...identitySync,
+            },
+          },
+        },
+      },
+    });
+
+    expect(legacyRootPublishesAapIdentity(config)).toBe(true);
+    expect(() => getResolvedAapProvidersConfig(config)).toThrow(
+      'must use the same identity mode',
+    );
+  });
+
+  it('uses legacy identity publishers when the AAP root only configures job templates', () => {
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          aap: {
+            jobs: {
+              orgs: ['Platform'],
+              multiOrgEnabled: true,
+              sync: {
+                jobTemplates: {
+                  enabled: true,
+                  schedule: {
+                    frequency: { minutes: 30 },
+                    timeout: { minutes: 3 },
+                  },
+                },
+              },
+            },
+          },
+          rhaap: {
+            production: {
+              orgs: ['Engineering'],
               sync: {
                 orgsUsersTeams: {
                   schedule: {
@@ -263,9 +311,43 @@ describe('catalogProviderConfig', () => {
       },
     });
 
-    expect(legacyRootPublishesAapIdentity(config)).toBe(true);
+    expect(getResolvedAapProvidersConfig(config)?.keys()).toEqual([
+      'production',
+    ]);
+    expect(isAapMultiOrgEnabled(config)).toBe(false);
+  });
+
+  it('treats comma-containing organization names as distinct from two organizations', () => {
+    const identitySync = {
+      sync: {
+        orgsUsersTeams: {
+          schedule: { frequency: { minutes: 30 }, timeout: { minutes: 3 } },
+        },
+      },
+    };
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          aap: {
+            development: {
+              multiOrgEnabled: true,
+              orgs: ['Engineering,Finance'],
+              ...identitySync,
+            },
+          },
+          rhaap: {
+            development: {
+              multiOrgEnabled: true,
+              orgs: ['Engineering', 'Finance'],
+              ...identitySync,
+            },
+          },
+        },
+      },
+    });
+
     expect(() => getResolvedAapProvidersConfig(config)).toThrow(
-      'must use the same identity mode',
+      'organizations (engineering,finance)',
     );
   });
 

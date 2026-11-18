@@ -230,6 +230,104 @@ describe('Trusted AAP organization resolution', () => {
     ).toThrow('sign-in identity mode');
   });
 
+  it('follows legacy identity orgs when AAP only configures job templates', async () => {
+    const split = new RhaapOrganizationResolver(
+      new ConfigReader({
+        catalog: {
+          providers: {
+            aap: {
+              jobs: {
+                orgs: ['Platform'],
+                multiOrgEnabled: true,
+                sync: {
+                  jobTemplates: {
+                    enabled: true,
+                    schedule: {
+                      frequency: { minutes: 30 },
+                      timeout: { minutes: 3 },
+                    },
+                  },
+                },
+              },
+            },
+            rhaap: {
+              production: {
+                orgs: ['Engineering'],
+                multiOrgEnabled: true,
+                sync: {
+                  orgsUsersTeams: {
+                    schedule: {
+                      frequency: { minutes: 30 },
+                      timeout: { minutes: 3 },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      client,
+    );
+    await expect(split.resolveAll(credentials())).resolves.toEqual([
+      'engineering',
+    ]);
+    expect(client.getOrgsByUserId).toHaveBeenCalledWith(42, ['engineering']);
+  });
+
+  it('does not add Default from a job-template-only environment', async () => {
+    const identitySync = {
+      sync: {
+        orgsUsersTeams: {
+          schedule: { frequency: { minutes: 30 }, timeout: { minutes: 3 } },
+        },
+      },
+    };
+    client.getOrgsByUserId.mockResolvedValue([
+      { name: 'Finance' },
+      { name: 'Default' },
+    ]);
+    client.getTeamsByUserId.mockResolvedValue([]);
+    const resolverWithJobs = new RhaapOrganizationResolver(
+      new ConfigReader({
+        catalog: {
+          providers: {
+            aap: {
+              identity: {
+                orgs: ['Finance'],
+                multiOrgEnabled: true,
+                ...identitySync,
+              },
+              jobs: {
+                sync: {
+                  jobTemplates: {
+                    enabled: true,
+                    schedule: {
+                      frequency: { minutes: 30 },
+                      timeout: { minutes: 3 },
+                    },
+                  },
+                },
+              },
+            },
+            rhaap: {
+              identity: {
+                orgs: ['Finance'],
+                multiOrgEnabled: true,
+                ...identitySync,
+              },
+            },
+          },
+        },
+      }),
+      client,
+    );
+    await expect(resolverWithJobs.resolveAll(credentials())).resolves.toEqual([
+      'finance',
+    ]);
+    expect(client.getOrgsByUserId).toHaveBeenCalledWith(42, ['finance']);
+  });
+
   it('does not treat job-template organization settings as identity publishers', () => {
     expect(
       () =>
