@@ -325,9 +325,10 @@ describe('readAapApiEntityConfigs', () => {
         CATALOG_PROVIDERS_CONTENT,
         () => readAapApiEntityConfigs(config, 'pahCollections'),
       );
-      expect(
-        configs[0].pahRepositories.map(repository => repository.name),
-      ).toEqual(['platform-pah']);
+      const repositories = configs[0]?.pahRepositories ?? [];
+      expect(repositories.map(repository => repository.name)).toEqual([
+        'platform-pah',
+      ]);
     });
 
     it('defaults checkSSL to true when the setting is omitted', () => {

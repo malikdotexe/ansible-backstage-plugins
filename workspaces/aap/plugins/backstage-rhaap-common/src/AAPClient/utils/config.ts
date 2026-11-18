@@ -131,8 +131,8 @@ export function resolveActiveOrganizations(config: Config): string[] {
  * Comparison is case-insensitive; returned names keep the configured spelling.
  */
 export function findMissingConfiguredOrganizations(
-  configuredOrganizations: string[],
-  fetchedOrganizationNames: string[],
+  configuredOrganizations: readonly string[],
+  fetchedOrganizationNames: readonly string[],
 ): string[] {
   const found = new Set(
     fetchedOrganizationNames.map(name => name.toLowerCase()),
