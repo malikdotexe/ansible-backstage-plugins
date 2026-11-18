@@ -120,6 +120,31 @@ describe('createPortalScaffolderFieldBlueprints', () => {
     expect(field.$$type).toBe('@backstage/scaffolder/FormField');
   });
 
+  it('keeps a failed lazy widget from rejecting the native form field registry', async () => {
+    const loaderError = new Error('Chunk unavailable');
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const loadField = createNativeScaffolderFieldLoader(
+      makeParams(),
+      async () => {
+        throw loaderError;
+      },
+    );
+
+    try {
+      await expect(loadField()).resolves.toMatchObject({
+        $$type: '@backstage/scaffolder/FormField',
+      });
+      expect(consoleError).toHaveBeenCalledWith(
+        'Failed to load native Scaffolder field RepositoryInput:',
+        loaderError,
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it('preserves legacy value and UI schemas when building native fields', () => {
     const schema = {
       returnValue: { type: 'string', default: 'https://git.example.org/repo' },

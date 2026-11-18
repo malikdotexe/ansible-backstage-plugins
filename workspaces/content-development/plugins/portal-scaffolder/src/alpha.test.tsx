@@ -37,13 +37,21 @@ const portalHost = createFrontendPlugin({
 
 function NativeFormFieldsProbe() {
   const formFieldsApi = useApi(formFieldsApiRef);
-  const [fieldCount, setFieldCount] = useState<number>();
+  const [fieldNames, setFieldNames] = useState<string[]>();
   useEffect(() => {
     void formFieldsApi
       .loadFormFields()
-      .then(fields => setFieldCount(fields.length));
+      .then(fields =>
+        setFieldNames(
+          fields.map(field => (field as unknown as { name: string }).name),
+        ),
+      );
   }, [formFieldsApi]);
-  return <div data-testid="native-form-fields">{fieldCount ?? 'loading'}</div>;
+  return (
+    <div data-testid="native-form-fields">
+      {fieldNames?.join(',') ?? 'loading'}
+    </div>
+  );
 }
 
 const nativeFormFieldsProbePlugin = createFrontendPlugin({
@@ -242,8 +250,8 @@ it('provides distinct native sidebar icons for the existing self-service section
   ).toBeNull();
 });
 
-it('loads contributed AAP fields through Backstage formFieldsApiRef', async () => {
-  async function loadFieldCount(features: FrontendFeature[]) {
+it('loads contributed custom picker fields through Backstage formFieldsApiRef', async () => {
+  async function loadFieldNames(features: FrontendFeature[]) {
     cleanup();
     await renderTestApp({
       features,
@@ -251,23 +259,39 @@ it('loads contributed AAP fields through Backstage formFieldsApiRef', async () =
       apis: [mockApis.permission()],
     });
     const fieldCount = await screen.findByTestId('native-form-fields');
-    await waitFor(() => expect(fieldCount.textContent).toMatch(/^\d+$/));
-    return Number(fieldCount.textContent);
+    await waitFor(() => expect(fieldCount.textContent).not.toBe('loading'));
+    return (fieldCount.textContent ?? '').split(',').filter(Boolean).sort();
   }
 
-  const baseFieldCount = await loadFieldCount([
+  const baseFieldNames = await loadFieldNames([
     portalHost,
     scaffolderFrontendPlugin,
     nativeFormFieldsProbePlugin,
   ]);
-  const contributedFieldCount = await loadFieldCount([
+  const contributedFieldNames = await loadFieldNames([
     portalHost,
     scaffolderFrontendPlugin,
     plugin,
     nativeFormFieldsProbePlugin,
   ]);
 
-  expect(contributedFieldCount).toBe(baseFieldCount + 2);
+  const contributedNames = contributedFieldNames.filter(
+    name => !baseFieldNames.includes(name),
+  );
+  expect(contributedNames).toEqual(
+    [
+      'AAPResourcePicker',
+      'CollectionsPicker',
+      'BaseImagePicker',
+      'FileUploadPicker',
+      'PackagesPicker',
+      'MCPServersPicker',
+      'ScmSelector',
+      'AdditionalBuildStepsPicker',
+      'EEFileNamePicker',
+      'EETagsPicker',
+    ].sort(),
+  );
 });
 
 it('discovers native fields on the real Portal wizard route and keeps the existing task/secrets flow', async () => {
