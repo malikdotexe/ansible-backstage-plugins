@@ -23,6 +23,7 @@ import {
   getResolvedAapProvidersConfig,
   getResolvedCatalogProvidersConfig,
   isAapMultiOrgEnabled,
+  resolveCatalogProvidersConfig,
   pahCollectionParser,
   readAapApiEntityConfigs,
   repositoryParser,
@@ -106,6 +107,7 @@ describe('catalog barrel', () => {
       getResolvedCatalogProvidersConfig(new ConfigReader({}))?.keys(),
     ).toBeUndefined();
     expect(typeof getResolvedAapProvidersConfig).toBe('function');
+    expect(typeof resolveCatalogProvidersConfig).toBe('function');
     expect(isAapMultiOrgEnabled()).toBe(false);
   });
 

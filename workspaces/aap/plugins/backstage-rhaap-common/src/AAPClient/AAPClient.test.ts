@@ -108,7 +108,7 @@ describe('AAPClient', () => {
         if (path === 'catalog.providers.rhaap') {
           return mockCatalogRhaapConfig;
         }
-        return mockAnsibleConfig;
+        return undefined;
       }),
       getOptionalString: jest.fn().mockImplementation((path: string) => {
         const paths: Record<string, string> = {
