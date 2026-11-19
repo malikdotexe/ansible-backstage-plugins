@@ -258,14 +258,6 @@ export function isAapMultiOrgEnabled(config?: Config): boolean {
   if (!config) {
     return false;
   }
-  const providers = getResolvedAapProvidersConfig(config);
-  return (
-    providers
-      ?.keys()
-      .some(
-        key =>
-          providers.getConfig(key).getOptionalBoolean('multiOrgEnabled') ===
-          true,
-      ) ?? false
-  );
+  assertNoConflictingAapIdentityMode(config);
+  return signInMultiOrgEnabled(config);
 }

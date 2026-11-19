@@ -73,9 +73,17 @@ export class RhaapOrganizationResolver implements ActiveOrganizationResolver {
       if (!providers || providers.keys().length === 0) return [];
       const configured = new Set<string>();
       let multiOrgEnabled = false;
-      for (const key of providers.keys()) {
+      const providerKeys = providers.keys();
+      const hasIdentityPublisher = providerKeys.some(key =>
+        envPublishesAapIdentity(providers.getConfig(key)),
+      );
+      for (const key of providerKeys) {
         const provider = providers.getConfig(key);
-        if (provider.has('sync') && !envPublishesAapIdentity(provider)) {
+        if (
+          hasIdentityPublisher &&
+          provider.has('sync') &&
+          !envPublishesAapIdentity(provider)
+        ) {
           continue;
         }
         if (!provider.has('orgs')) {

@@ -328,6 +328,41 @@ describe('Trusted AAP organization resolution', () => {
     expect(client.getOrgsByUserId).toHaveBeenCalledWith(42, ['finance']);
   });
 
+  it('keeps organization membership when the selected root has no identity publisher', async () => {
+    const legacy = new RhaapOrganizationResolver(
+      new ConfigReader({
+        catalog: {
+          providers: {
+            rhaap: {
+              production: {
+                orgs: ['Engineering', 'Finance'],
+                multiOrgEnabled: true,
+                sync: {
+                  jobTemplates: {
+                    enabled: true,
+                    schedule: {
+                      frequency: { minutes: 30 },
+                      timeout: { minutes: 3 },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      client,
+    );
+    await expect(legacy.resolveAll(credentials())).resolves.toEqual([
+      'engineering',
+      'finance',
+    ]);
+    expect(client.getOrgsByUserId).toHaveBeenCalledWith(42, [
+      'engineering',
+      'finance',
+    ]);
+  });
+
   it('does not treat job-template organization settings as identity publishers', () => {
     expect(
       () =>

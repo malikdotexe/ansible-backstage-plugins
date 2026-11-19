@@ -6,6 +6,7 @@ import type { Config } from '@backstage/config';
 import {
   CATALOG_PROVIDERS_CONTENT,
   CATALOG_PROVIDERS_RHAAP,
+  getCatalogProvidersConfigRoot,
   getResolvedCatalogProvidersConfig,
 } from '@ansible/backstage-rhaap-common/catalog';
 import type { AnsibleGitContentsSourceConfig, ScmProvider } from './types';
@@ -26,10 +27,9 @@ export function readAnsibleGitContentsConfigs(
     return [];
   }
 
-  const contentRoot = config.getOptionalConfig(CATALOG_PROVIDERS_CONTENT);
   const rhaapRoot = config.getOptionalConfig(CATALOG_PROVIDERS_RHAAP);
   if (
-    contentRoot &&
+    getCatalogProvidersConfigRoot() === CATALOG_PROVIDERS_CONTENT &&
     rhaapRoot
       ?.keys()
       .some(key => rhaapRoot.getConfig(key).has('sync.ansibleGitContents'))

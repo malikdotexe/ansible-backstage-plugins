@@ -114,6 +114,55 @@ describe('config', () => {
       );
     });
 
+    it('does not warn that rhaap Git sources are ignored when the all slice loads them', () => {
+      (console.warn as jest.Mock).mockClear();
+      const schedule = {
+        frequency: { minutes: 30 },
+        timeout: { minutes: 3 },
+      };
+      const config = new ConfigReader({
+        catalog: {
+          providers: {
+            content: {
+              dev: {
+                sync: {
+                  ansibleGitContents: {
+                    schedule,
+                    providers: {
+                      github: [{ name: 'internal', orgs: [{ name: 'acme' }] }],
+                    },
+                  },
+                },
+              },
+            },
+            rhaap: {
+              production: {
+                sync: {
+                  ansibleGitContents: {
+                    schedule,
+                    providers: {
+                      github: [
+                        { name: 'legacy', orgs: [{ name: 'legacy-org' }] },
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const sources = runWithCatalogProvidersConfigRoot(
+        'catalog.providers.rhaap',
+        () => readAnsibleGitContentsConfigs(config),
+      );
+      expect(sources.map(source => source.organization)).toEqual([
+        'legacy-org',
+      ]);
+      expect(console.warn).not.toHaveBeenCalled();
+    });
+
     it('should return empty array when no rhaap config exists', () => {
       const config = new ConfigReader({});
       const result = readAnsibleGitContentsConfigs(config);

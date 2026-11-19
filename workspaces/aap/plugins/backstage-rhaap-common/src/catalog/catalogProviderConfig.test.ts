@@ -317,6 +317,69 @@ describe('catalogProviderConfig', () => {
     expect(isAapMultiOrgEnabled(config)).toBe(false);
   });
 
+  it('derives multi-org mode only from identity-publishing environments', () => {
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          aap: {
+            identity: {
+              orgs: ['Default'],
+              multiOrgEnabled: false,
+              sync: {
+                orgsUsersTeams: {
+                  schedule: {
+                    frequency: { minutes: 30 },
+                    timeout: { minutes: 3 },
+                  },
+                },
+              },
+            },
+            jobs: {
+              multiOrgEnabled: true,
+              sync: {
+                jobTemplates: {
+                  enabled: true,
+                  schedule: {
+                    frequency: { minutes: 30 },
+                    timeout: { minutes: 3 },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    expect(isAapMultiOrgEnabled(config)).toBe(false);
+  });
+
+  it('falls back to non-identity environments when no identity publisher exists', () => {
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          rhaap: {
+            production: {
+              orgs: ['Engineering'],
+              multiOrgEnabled: true,
+              sync: {
+                jobTemplates: {
+                  enabled: true,
+                  schedule: {
+                    frequency: { minutes: 30 },
+                    timeout: { minutes: 3 },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    expect(isAapMultiOrgEnabled(config)).toBe(true);
+  });
+
   it('treats comma-containing organization names as distinct from two organizations', () => {
     const identitySync = {
       sync: {
