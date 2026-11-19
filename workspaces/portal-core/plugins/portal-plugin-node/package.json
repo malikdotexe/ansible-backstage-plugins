@@ -7,7 +7,6 @@
     "url": "https://github.com/ansible/ansible-backstage-plugins.git",
     "directory": "workspaces/portal-core/plugins/portal-plugin-node"
   },
-  "private": false,
   "description": "Server-side SDK for Ansible portal backend plugins — identity middleware, audit event emitter, health push, and org-keyed DB helpers",
   "main": "src/index.ts",
   "types": "src/index.ts",
