@@ -328,6 +328,50 @@ describe('Trusted AAP organization resolution', () => {
     expect(client.getOrgsByUserId).toHaveBeenCalledWith(42, ['finance']);
   });
 
+  it.each(['aap', 'rhaap'] as const)(
+    'ignores no-sync environments on %s when identity publishers exist',
+    async root => {
+      client.getUserInfoById.mockResolvedValue({
+        id: 42,
+        username: 'Alice',
+        is_superuser: false,
+      });
+      client.getOrgsByUserId.mockResolvedValue([{ name: 'Finance' }]);
+      client.getTeamsByUserId.mockResolvedValue([]);
+      const split = new RhaapOrganizationResolver(
+        new ConfigReader({
+          catalog: {
+            providers: {
+              [root]: {
+                identity: {
+                  orgs: ['Finance'],
+                  multiOrgEnabled: false,
+                  sync: {
+                    orgsUsersTeams: {
+                      schedule: {
+                        frequency: { minutes: 30 },
+                        timeout: { minutes: 3 },
+                      },
+                    },
+                  },
+                },
+                extra: {
+                  orgs: ['Engineering'],
+                  multiOrgEnabled: true,
+                },
+              },
+            },
+          },
+        }),
+        client,
+      );
+      await expect(
+        split.resolveAll(credentials('user:default/Alice')),
+      ).resolves.toEqual(['finance']);
+      expect(client.getOrgsByUserId).toHaveBeenCalledWith(42, ['finance']);
+    },
+  );
+
   it('keeps organization membership when the selected root has no identity publisher', async () => {
     const legacy = new RhaapOrganizationResolver(
       new ConfigReader({

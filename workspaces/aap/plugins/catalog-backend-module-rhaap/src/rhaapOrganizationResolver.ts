@@ -79,11 +79,7 @@ export class RhaapOrganizationResolver implements ActiveOrganizationResolver {
       );
       for (const key of providerKeys) {
         const provider = providers.getConfig(key);
-        if (
-          hasIdentityPublisher &&
-          provider.has('sync') &&
-          !envPublishesAapIdentity(provider)
-        ) {
+        if (hasIdentityPublisher && !envPublishesAapIdentity(provider)) {
           continue;
         }
         if (!provider.has('orgs')) {

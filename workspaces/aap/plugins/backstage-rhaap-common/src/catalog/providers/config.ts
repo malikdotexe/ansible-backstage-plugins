@@ -11,6 +11,7 @@ import { getResolvedCatalogProvidersConfig } from '../catalogProviderConfig';
 export function readAapApiEntityConfigs(
   config: Config,
   syncEntity: string,
+  options?: { allowMissingSchedule?: boolean },
 ): AapConfig[] {
   const providerConfigs = getResolvedCatalogProvidersConfig(config);
   if (!providerConfigs) {
@@ -42,8 +43,9 @@ export function readAapApiEntityConfigs(
       // omitted schedule can still use the task runner passed to fromConfig.
       // Require a config schedule only when the block is explicitly enabled.
       const scheduleRequired =
-        syncEntity !== 'jobTemplates' ||
-        catalogConfig.getOptionalBoolean(`${syncPath}.enabled`) === true;
+        !options?.allowMissingSchedule &&
+        (syncEntity !== 'jobTemplates' ||
+          catalogConfig.getOptionalBoolean(`${syncPath}.enabled`) === true);
       if (scheduleRequired && !catalogConfig.has(`${syncPath}.schedule`)) {
         throw new InputError(
           `No schedule provided via config for ${syncPath}.schedule on catalog provider "${id}".`,

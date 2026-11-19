@@ -59,7 +59,9 @@ export class AAPEntityProvider implements EntityProvider {
     },
   ): AAPEntityProvider[] {
     const { logger } = options;
-    const providerConfigs = readAapApiEntityConfigs(config, this.syncEntity);
+    const providerConfigs = readAapApiEntityConfigs(config, this.syncEntity, {
+      allowMissingSchedule: Boolean(options.schedule),
+    });
     logger.info(`Init AAP entity provider from config.`);
     return providerConfigs.map(providerConfig => {
       const taskRunner = resolveTaskRunner(
